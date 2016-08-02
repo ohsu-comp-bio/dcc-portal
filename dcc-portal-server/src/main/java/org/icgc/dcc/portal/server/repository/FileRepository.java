@@ -34,6 +34,7 @@ import static org.elasticsearch.action.search.SearchType.QUERY_THEN_FETCH;
 import static org.elasticsearch.action.search.SearchType.SCAN;
 import static org.elasticsearch.index.query.FilterBuilders.nestedFilter;
 import static org.elasticsearch.index.query.FilterBuilders.termFilter;
+import static org.elasticsearch.index.query.FilterBuilders.termsFilter;
 import static org.elasticsearch.index.query.QueryBuilders.matchAllQuery;
 import static org.elasticsearch.index.query.QueryBuilders.multiMatchQuery;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.avg;
@@ -57,6 +58,7 @@ import static org.icgc.dcc.portal.server.util.JsonUtils.merge;
 import static org.icgc.dcc.portal.server.util.SearchResponses.getHitIds;
 import static org.icgc.dcc.portal.server.util.SearchResponses.getTotalHitCount;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -79,6 +81,7 @@ import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.index.query.FilterBuilder;
+import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.FilteredQueryBuilder;
 import org.elasticsearch.search.aggregations.AbstractAggregationBuilder;
 import org.elasticsearch.search.aggregations.AggregationBuilder;
@@ -92,6 +95,7 @@ import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.aggregations.metrics.avg.Avg;
 import org.icgc.dcc.portal.server.model.IndexModel.Kind;
 import org.icgc.dcc.portal.server.model.IndexModel.Type;
+import org.icgc.dcc.portal.server.model.ManifestSummaryQuery;
 import org.icgc.dcc.portal.server.model.Query;
 import org.icgc.dcc.portal.server.model.SearchFieldMapper;
 import org.icgc.dcc.portal.server.model.TermFacet;
@@ -402,6 +406,39 @@ public class FileRepository {
     return client.prepareSearchScroll(scrollId)
         .setScroll(KEEP_ALIVE)
         .execute().actionGet();
+  }
+
+  public int getManifestSummary(ManifestSummaryQuery summary, UUID setId) {
+    val donorAggKey = CustomAggregationKeys.REPO_DONOR_COUNT;
+    val multiSearch = client.prepareMultiSearch();
+    val repoNames = summary.getRepoNames();
+
+    val exclude = new ArrayList<String>();
+    for (val repoName : repoNames) {
+      val request = client.prepareSearch(repoIndexName).setTypes("file-text").setSearchType(COUNT);
+      val termsLookup = createTermsLookupFilter(toRawFieldName(Fields.ID), FILE_IDS, setId);
+
+      val boolFilter = FilterBuilders.boolFilter()
+          .must(termsLookup)
+          .must(nestedFilter("file_copies", termsFilter("repo_name", repoName)));
+
+      for (val excluded : exclude) {
+        boolFilter.mustNot(nestedFilter("file_copies", termsFilter("repo_name", excluded)));
+      }
+
+      val filteredQuery = filteredQuery(boolFilter);
+      request.setQuery(filteredQuery)
+          .addAggregation(donorIdAgg(donorAggKey));
+
+      exclude.add(repoName);
+      multiSearch.add(request);
+    }
+
+    val response = multiSearch.get();
+
+    log.info("POOPOO: {}", response);
+    val delete = client.prepareDelete("terms-lookup", "file-ids", setId.toString()).get();
+    return 200;
   }
 
   /*

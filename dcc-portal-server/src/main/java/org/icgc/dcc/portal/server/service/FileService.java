@@ -27,11 +27,11 @@ import static com.google.common.collect.Sets.union;
 import static com.google.common.primitives.Longs.tryParse;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
-import static org.icgc.dcc.portal.server.util.Collections.isEmpty;
 import static org.elasticsearch.common.collect.Iterables.toArray;
 import static org.icgc.dcc.common.core.util.Joiners.COMMA;
 import static org.icgc.dcc.common.core.util.stream.Collectors.toImmutableSet;
 import static org.icgc.dcc.portal.server.model.File.parse;
+import static org.icgc.dcc.portal.server.util.Collections.isEmpty;
 import static org.icgc.dcc.portal.server.util.SearchResponses.hasHits;
 import static org.supercsv.prefs.CsvPreference.TAB_PREFERENCE;
 
@@ -53,10 +53,13 @@ import org.elasticsearch.common.collect.Iterables;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHitField;
 import org.elasticsearch.search.SearchHits;
+import org.icgc.dcc.portal.server.model.BaseEntitySet;
+import org.icgc.dcc.portal.server.model.EntitySetDefinition;
 import org.icgc.dcc.portal.server.model.File;
 import org.icgc.dcc.portal.server.model.Files;
 import org.icgc.dcc.portal.server.model.Keyword;
 import org.icgc.dcc.portal.server.model.Keywords;
+import org.icgc.dcc.portal.server.model.ManifestSummaryQuery;
 import org.icgc.dcc.portal.server.model.Pagination;
 import org.icgc.dcc.portal.server.model.Query;
 import org.icgc.dcc.portal.server.model.TermFacet;
@@ -140,6 +143,8 @@ public class FileService {
    */
   @NonNull
   private final FileRepository fileRepository;
+  @NonNull
+  private final EntitySetService entitySetService;
 
   public Map<String, String> findRepos() {
     return fileRepository.findRepos();
@@ -206,6 +211,25 @@ public class FileService {
 
   public Map<String, Map<String, Map<String, Object>>> getRepoStats(String repoName) {
     return fileRepository.getRepoStats(repoName);
+  }
+
+  public int getManifestSummary(@NonNull ManifestSummaryQuery summary) {
+    val query = summary.getQuery();
+
+    val entitySetDefinition = new EntitySetDefinition(
+        query.getFilters().toString(),
+        "id",
+        EntitySetDefinition.SortOrder.ASCENDING,
+        "Manifest Summary Transient",
+        "",
+        BaseEntitySet.Type.FILE,
+        300000,
+        true);
+
+    val setId = entitySetService.createExternalEntitySet(entitySetDefinition).getId();
+
+    fileRepository.getManifestSummary(summary, setId);
+    return 200;
   }
 
   public void exportFiles(OutputStream output, Query query) {
