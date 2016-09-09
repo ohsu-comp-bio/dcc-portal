@@ -24,7 +24,7 @@
 
   angular.module (moduleNamespace, [controllersNamespace]);
   angular.module (controllersNamespace, [])
-    .controller (controllerName, ['RouteInfoService', function (RouteInfoService) {
+    .controller (controllerName, ['RouteInfoService','Branding', function (RouteInfoService,Branding) {
     function styleClass (name) {
       return 't_nav__items__item__' + name;
     }
@@ -62,6 +62,7 @@
     });
 
     this.menuItems = menuItems;
+    this.branding = Branding;
   }]);
 
 })();

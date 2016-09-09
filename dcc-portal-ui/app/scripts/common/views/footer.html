@@ -16,8 +16,8 @@
     <li><a href="http://docs.icgc.org/portal/about" target="_blank">Portal</a></li>
     <li><a href="http://docs.icgc.org/portal/api-endpoints/" target="_blank">Portal API</a></li>
     <li><a href="http://docs.icgc.org/submission/about" target="_blank">Submission</a></li>
-   
-    
+
+
 </ul>
 <ul data-ng-class="{'footer-grid-adjust': ! stagedFeatures.getCloudLinks()}">
     <li class="heading">DCC</li>
@@ -35,17 +35,17 @@
 </ul>
 <ul data-ng-if="stagedFeatures.getCloudLinks()">
     <li class="heading">Cloud</li>
-    <li data-ng-repeat="cloudLink in ::stagedFeatures.getCloudLinks()"> 
+    <li data-ng-repeat="cloudLink in ::stagedFeatures.getCloudLinks()">
       <a data-ng-href="{{cloudLink.link}}" data-ng-bind="cloudLink.title"></a>
     </li>
     <li>
         <a href="http://docs.icgc.org/cloud/guide/" target="_blank">User Guide</a>
     </li>
 </ul>
-<div class="logo omega"><a href="http://oicr.on.ca/" target="_blank"><img src="/styles/images/OICR2logo.png"></a></div>
+<div class="logo omega"><a href="{{branding.footerLogoImgHref}}" target="_blank"><img src="{{branding.footerLogoImgSrc}}"></a></div>
         </div>
 <div class="footer-caption">
-    <small style="display: block"> &copy; 2015 <a href="https://icgc.org">International Cancer Genome Consortium.</a> All
+    <small style="display: block"> &copy; 2015 <a href="{{branding.footerCaptionHref}}">{{branding.footerCaption}}</a> All
         Rights
         reserved.</small>
     <small style="display: block; line-height: .5rem" data-ng-if="FooterCtrl.portalVersion">ICGC Data Portal {{FooterCtrl.portalVersion}} -
