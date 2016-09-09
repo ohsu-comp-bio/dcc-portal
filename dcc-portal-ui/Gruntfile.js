@@ -483,15 +483,32 @@ module.exports = function (grunt) {
           ignorePath: 'app'
         },
         files: [{
-          expand: true,
-          cwd: '<%= yeoman.app %>/develop/scripts',
-          src: ['*.js']
-        }]
+            expand: true,
+            cwd: '<%= yeoman.app %>/develop/scripts',
+            src: ['*.js']
+          },
+          {
+            expand: true,
+            cwd: '<%= yeoman.app %>/branding/scripts',
+            src: ['*.js']
+          }
+        ]
       }
     }
   });
 
   grunt.registerTask('bower-install', ['bower-install-simple']);
+
+  // A very basic task to read from process.env
+  grunt.registerTask('branding_customize', 'Override UI images and strings. see app/branding/scripts/config.js', function() {
+    if (process.env.ICGC_BRANDING) {
+      var _fileName = grunt.template.process('<%= yeoman.app %>/branding/scripts/custom.js');
+      grunt.file.write(_fileName, '$ICGC_BRANDING = ' + process.env.ICGC_BRANDING);
+      grunt.log.write('process.env.ICGC_BRANDING set, wrote ',_fileName).ok();
+    } else {
+      grunt.log.write('process.env.ICGC_BRANDING not set, skipping. ').ok();
+    }
+  });
 
   grunt.registerTask('server', function (target) {
     if (target === 'dist') {
@@ -504,6 +521,7 @@ module.exports = function (grunt) {
 
     grunt.task.run([
       'ICGC-setBuildEnv:development',
+      'branding_customize',
       'injector:dev',
       'clean:server',
       'configureProxies:server',
