@@ -1,3 +1,5 @@
+# THIS BRANCH IS FOR PROTOTYPE/DISCUSSION ONLY! NOT INTENDED TO MERGE TO OICR
+
 # ICGC DCC - Portal
 
 Parent project of the portal modules
