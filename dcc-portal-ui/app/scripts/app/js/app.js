@@ -557,9 +557,94 @@
 
     }
 
+    // Function that returns a interceptor function
+    // that intercepts all requests and redacts responses from requests
+    // that have no project filter
+    window._whiteListedProjects = ["BRCA-US","BRCA-EU"];
+    function _getResponseSecurityFilter() {
+      // see https://github.com/mgonto/restangular#addresponseinterceptor
+      return function(data,operation,what,url,response,deferred) {
+        // data: The data received got from the server
+        // operation: The operation made. It'll be the HTTP method used except for a GET which returns a list of element which will return getList so that you can distinguish them.
+        // what: The model that's being requested. It can be for example: accounts, buildings, etc.
+        // url: The relative URL being requested. For example: /api/v1/accounts/123
+        // response: Full server response including headers
+        // deferred: The deferred promise for the request.
+        //The responseInterceptor must return the restangularized data element.
+        try {
+          if (url.includes("api/v1/donors") && data.facets.projectId.terms ) {
+            data.facets.projectId.terms = data.facets.projectId.terms.filter(function(t){return _whiteListedProjects.includes(t.term) });
+          }
+        } catch (e) { }
+        try {
+          if (url.includes("api/v1/mutations")  ) {
+            console.log("REDACT ME",data);
+          }
+        } catch (e) { }
+
+        return data;
+      } ;
+    }
+
+    // Function that returns a interceptor function
+    // that intercepts all requests and applies a project filter
+    function _getRequestSecurityFilter() {
+      // https://github.com/mgonto/restangular#addfullrequestinterceptor
+      return function(element,operation,what,url,headers,queryParams) {
+        // element: The element to send to the server.
+        // operation: The operation made. It'll be the HTTP method used except for a GET which returns a list of element which will return getList so that you can distinguish them.
+        // what: The model that's being requested. It can be for example: accounts, buildings, etc.
+        // url: The relative URL being requested. For example: /api/v1/accounts/123
+
+        var logit = false ; //$icgcApp.getAPI().isDebugEnabled()
+        if (logit) {
+          console.log(
+            {"element":element,"operation":operation,"what":what,"url":url,"headers":headers,"queryParams":queryParams}
+          );
+        }
+        // generic project filter
+        var no_projectfilter = ["mutations","genes","mutations","donors","gene"] ;
+        var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts"];
+        var doNotfilterByProject = 0 ;
+        if (!queryParams.filters) {
+          doNotfilterByProject++;
+        }
+        if (no_projectfilter.includes(what)) {
+          doNotfilterByProject++;
+        }
+        no_projectfilter_urls.forEach(function(urlPart){
+          if (url.includes(urlPart)) {
+            doNotfilterByProject++;
+          }
+        }) ;
+
+        var filtered = false;
+        if (!doNotfilterByProject) {
+          console.log("filtering",url);
+          filtered = true;
+          queryParams.filters.project = {"id":{"is":_whiteListedProjects}};
+        }
+
+        if (!filtered && what === "donors") {
+          if (!queryParams.filters.donor) {
+            queryParams.filters.donor = {} ;
+          }
+          queryParams.filters.donor.projectId = {"is":_whiteListedProjects} ;
+        }
+
+        /** TODO redact responses from
+        api/v1/ui/search/projects/donor-mutation-counts
+        **/
+
+      }
+    }
+    
+
     RestangularProvider.setRequestInterceptor(_getInterceptorDebugFunction('Request'));
     RestangularProvider.setResponseInterceptor(_getInterceptorDebugFunction('Reponse'));
 
+    RestangularProvider.addFullRequestInterceptor(_getRequestSecurityFilter());
+    RestangularProvider.addResponseInterceptor(_getResponseSecurityFilter());
 
 
     RestangularProvider.setDefaultHttpFields({cache: true});
