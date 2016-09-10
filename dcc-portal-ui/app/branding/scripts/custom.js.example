@@ -1,0 +1,9 @@
+$ICGC_BRANDING = {
+  'footerCaption':'Oregon Health and Sciences University powered by CCC.',
+  'footerCaptionHref':'http://www.ohsu.edu/',
+  'footerLogoImgSrc':'https://cloud.githubusercontent.com/assets/2043709/18405558/d1989c0c-76c0-11e6-91eb-0d381b16527b.png',
+  'footerLogoImgHref':'http://www.ohsu.edu/',
+  'headerCaption':'Knight Cancer',
+  'headerLogoImgSrc':'/styles/images/ohsu-logo.png',
+};
+
