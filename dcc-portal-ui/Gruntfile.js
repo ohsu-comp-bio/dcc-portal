@@ -24,6 +24,8 @@ var mountFolder = function (connect, dir) {
 };
 
 var proxySnippet = require('grunt-connect-proxy/lib/utils').proxyRequest;
+var authSnippet = require('grunt-connect-http-auth/lib/utils').authRequest;
+
 var HOSTNAME = 'local.dcc.icgc.org';
 var apiProxySettings = process.env.API_SOURCE === 'production' ? {
       context: '/api',
@@ -44,6 +46,12 @@ var apiProxySettings = process.env.API_SOURCE === 'production' ? {
 // 'test/spec/**/*.js'
 
 module.exports = function (grunt) {
+  // npm install grunt-connect-http-auth --save-dev
+  grunt.loadNpmTasks('grunt-connect-http-auth');
+
+  var _authFile = __dirname + "/data/users.htpasswd"
+  grunt.log.write('grunt-connect-http-auth reading users from '+_authFile+' ').ok();
+
   // load all grunt tasks
   require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
   require('time-grunt')(grunt);
@@ -138,6 +146,10 @@ module.exports = function (grunt) {
         // Change this to '0.0.0.0' to access the server from outside.
         hostname: HOSTNAME
       },
+      auth:{
+         authRealm : "Private server",
+         authFile: _authFile
+      },
       proxies: [
         apiProxySettings
       ],
@@ -146,6 +158,7 @@ module.exports = function (grunt) {
           middleware: function (connect) {
             return [
               proxySnippet,
+              authSnippet,
               modRewrite([
                 '!\\.html|\\images|\\.js|\\.css|\\.png|\\.jpg|\\.woff|\\.ttf|\\.svg ' +
                 '/' + yeomanConfig.developIndexFile + ' [L]'
@@ -506,6 +519,7 @@ module.exports = function (grunt) {
       'ICGC-setBuildEnv:development',
       'injector:dev',
       'clean:server',
+      'configureHttpAuth',
       'configureProxies:server',
       'concurrent:server',
       'connect:livereload',
