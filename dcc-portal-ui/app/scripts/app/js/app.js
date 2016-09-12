@@ -582,6 +582,14 @@
           }
         } catch (e) { }
 
+        try {
+          if (_.has(data, 'termFacets.projectCode.terms')) {
+            data.termFacets.projectCode.terms = _.remove(data.termFacets.projectCode.terms, function(e) {
+              return _whiteListedProjects.includes(e.term);
+            });
+          }
+        } catch (e) { }
+
         return data;
       } ;
     }
@@ -603,7 +611,7 @@
           );
         }
         // generic project filter
-        var no_projectfilter = ["mutations","genes","mutations","donors","gene"] ;
+        var no_projectfilter = ["mutations","genes","mutations","donors","gene","occurrences", "repository/files","repository/files/summary"] ;
         var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts"];
         var doNotfilterByProject = 0 ;
         if (!queryParams.filters) {
@@ -622,14 +630,47 @@
         if (!doNotfilterByProject) {
           console.log("filtering",url);
           filtered = true;
-          queryParams.filters.project = {"id":{"is":_whiteListedProjects}};
+
+          if (!queryParams.filters.project) {
+            queryParams.filters.project = {} ;
+          }
+          if(queryParams.filters.project.id) {
+            if(queryParams.filters.project.id.is) {
+              var _intersection = _.intersection(queryParams.filters.project.id.is, _whiteListedProjects);
+              if (_intersection.length == 0) {
+                _intersection = _whiteListedProjects;
+              }
+              queryParams.filters.project.id.is = _intersection;
+            }
+            if(queryParams.filters.project.id.not) {
+              var _projects = queryParams.filters.project.id.not;
+              delete queryParams.filters.project.id.not;
+              queryParams.filters.project.id.is = _.difference(_whiteListedProjects,_projects);
+            }
+          } else {
+            queryParams.filters.project.id = {"is":_whiteListedProjects};
+          }
+
         }
 
+
+        if (!filtered && url.includes("files")) {
+          if (!queryParams.filters) {
+            queryParams.filters = {} ;
+          }
+          if (!queryParams.filters.file) {
+            queryParams.filters.file = {} ;
+          }
+          if (!queryParams.filters.file.projectCode) {
+            queryParams.filters.file.projectCode = {} ;
+            queryParams.filters.file.projectCode.is = _whiteListedProjects;
+          }
+        }
         if (!filtered && what === "donors") {
           if (!queryParams.filters.donor) {
             queryParams.filters.donor = {} ;
           }
-          queryParams.filters.donor.projectId = {"is":_whiteListedProjects} ;
+          queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
         }
 
         /** TODO redact responses from
@@ -638,14 +679,12 @@
 
       }
     }
-    
 
     RestangularProvider.setRequestInterceptor(_getInterceptorDebugFunction('Request'));
     RestangularProvider.setResponseInterceptor(_getInterceptorDebugFunction('Reponse'));
 
     RestangularProvider.addFullRequestInterceptor(_getRequestSecurityFilter());
     RestangularProvider.addResponseInterceptor(_getResponseSecurityFilter());
-
 
     RestangularProvider.setDefaultHttpFields({cache: true});
 
