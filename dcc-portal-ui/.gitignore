@@ -6,3 +6,4 @@ app/scripts/common/js/pql/pqlparser.js
 target/
 test-bower*
 data/users.htpasswd
+app/branding/scripts/custom.js
