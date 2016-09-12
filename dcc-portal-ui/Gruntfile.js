@@ -50,7 +50,10 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-connect-http-auth');
 
   var _authFile = __dirname + "/data/users.htpasswd"
-  grunt.log.write('grunt-connect-http-auth reading users from '+_authFile+' ').ok();
+  if(!grunt.file.exists(_authFile)) {
+    grunt.fail.fatal('grunt-connect-http-auth basic auth file does not exist. Please create '+_authFile);
+  }
+  grunt.log.write('grunt-connect-http-auth checked auth file '+_authFile+' ').ok();
 
   // load all grunt tasks
   require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
