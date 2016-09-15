@@ -590,6 +590,27 @@
           }
         } catch (e) { }
 
+        //        api/v1/mutations
+        try {
+          if (_.has(data, 'occurrences')) {
+            // remove projects we don't have access to
+            data.occurrences = _.remove(data.occurrences, function(e) {
+              return _whiteListedProjects.includes(e.projectId);
+            });
+            // adjust summary counts
+            if (_.has(data, 'affectedProjectCount')) {
+              var affectedProjects = _.reduce(data.occurrences, function(result, value, key) {
+                result[value.projectId] = (result[value.projectId]||0) + 1;
+                return result;
+              }, {});
+              data.affectedProjectCount = _.keys(affectedProjects).length;
+              data.affectedDonorCountTotal = _.reduce(affectedProjects, function(result, value, key) {
+                return result + value;
+              }, 0);
+            }
+          }
+        } catch (e) { }
+
         return data;
       } ;
     }
