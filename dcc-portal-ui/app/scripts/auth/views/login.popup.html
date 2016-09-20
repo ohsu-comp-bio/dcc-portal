@@ -22,14 +22,22 @@
             </div>
         </div>
         <ul class="open-id-providers">
+            <li class="open-id-provider" data-ng-class="{active: params.provider=='ccc'}"
+                data-ng-click="params.provider='ccc'">
+                <span class="logo">
+                  <img style="margin-bottom: .5rem" src="/styles/images/ccc-logo.png"></span>
+            </li>
             <li class="open-id-provider" data-ng-class="{active: params.provider=='icgc'}"
-                data-ng-click="params.provider='icgc'"><span class="logo"><img
-                    src="/styles/images/icgc_open_id.png"></span></li>
+                data-ng-click="params.provider='icgc'">
+                <span class="logo">
+                  <img src="/styles/images/icgc_open_id.png"></span></li>
             <li class="open-id-provider" data-ng-class="{active: params.provider=='google'}"
-                data-ng-click="params.provider='google'"><span class="logo"><img
+                data-ng-click="params.provider='google'">
+                <span class="logo"><img
                     src="/styles/images/google_open_id.png"></span></li>
             <li class="open-id-provider" data-ng-class="{active: params.provider=='yahoo'}"
-                data-ng-click="params.provider='yahoo'"><span class="logo"><img style="margin-bottom: .5rem" src="/styles/images/yahoo_open_id.png"></span>
+                data-ng-click="params.provider='yahoo'">
+                <span class="logo"><img style="margin-bottom: .5rem" src="/styles/images/yahoo_open_id.png"></span>
             </li>
         </ul>
 
@@ -43,12 +51,12 @@
 
         <p data-ng-show="params.provider=='icgc'">Sign in using your <strong>ICGC</strong> account.</p>
 
-        <p data-ng-show="params.provider=='google'||params.provider=='yahoo'">Sign in using <strong
+        <p data-ng-show="params.provider=='google'||params.provider=='yahoo'||params.provider=='ccc'">Sign in using <strong
                 style="text-transform: capitalize">{{params.provider}}</strong> as your OpenID provider</p>
 
         <p data-ng-show="params.provider=='openid'">
             <label for="openIDUrl">Enter your <strong>OpenID</strong> url</label><br>
-            <input id="openIDUrl" style="width:50%" data-ng-model="openIDUrl"></p>
+            <input id="openIDUrl" style="width:50%" data-ng-model="params.openIDUrl"></p>
 
         <p data-ng-show="params.provider=='verisign'">
             <label for="verisignUsername">Enter your <strong>Verisign</strong> username</label><br>
@@ -64,4 +72,3 @@
         </button>
     </div>
 </div>
-

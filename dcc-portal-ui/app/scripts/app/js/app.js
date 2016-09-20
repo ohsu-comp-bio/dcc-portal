@@ -239,6 +239,7 @@
     'icgc.genelist',
     'icgc.genesets',
     'icgc.visualization',
+    'icgc.wdl',
     'icgc.enrichment',
     'icgc.sets',
     'icgc.analysis',
@@ -560,7 +561,10 @@
     // Function that returns a interceptor function
     // that intercepts all requests and redacts responses from requests
     // that have no project filter
-    window._whiteListedProjects = ["BRCA-US","BRCA-EU"];
+    window._whiteListedProjects = ["XXXX-NONE-XXXX"];
+    function _logAuthorization(msg) {
+      console.log("_logAuthorization",window.location.href , JSON.stringify(msg));
+    }
     function _getResponseSecurityFilter() {
       // see https://github.com/mgonto/restangular#addresponseinterceptor
       return function(data,operation,what,url,response,deferred) {
@@ -574,19 +578,21 @@
         try {
           if (url.includes("api/v1/donors") && data.facets.projectId.terms ) {
             data.facets.projectId.terms = data.facets.projectId.terms.filter(function(t){return _whiteListedProjects.includes(t.term) });
+            _logAuthorization({"url":url, "redact_response": ["data.facets.projectId.terms"] });
           }
         } catch (e) { }
-        try {
-          if (url.includes("api/v1/mutations")  ) {
-            console.log("REDACT ME",data);
-          }
-        } catch (e) { }
+        // try {
+        //   if (url.includes("api/v1/mutations")  ) {
+        //     console.log("REDACT ME",data);
+        //   }
+        // } catch (e) { }
 
         try {
           if (_.has(data, 'termFacets.projectCode.terms')) {
             data.termFacets.projectCode.terms = _.remove(data.termFacets.projectCode.terms, function(e) {
               return _whiteListedProjects.includes(e.term);
             });
+            _logAuthorization({"url":url, "redact_response": ["data.termFacets.projectCode.terms"] });
           }
         } catch (e) { }
 
@@ -608,6 +614,14 @@
                 return result + value;
               }, 0);
             }
+            _logAuthorization({"url":url, "redact_response": ["data.occurrences","data.affectedProjectCount","data.affectedDonorCountTotal"] });
+          }
+        } catch (e) { }
+
+        try {
+          if (url.includes("api/v1/settings")  ) {
+            data.ssoCCC = 'http://' + location.hostname + ":3000?" ;
+            _logAuthorization({"url":url, "redact_response": ["ssoCCC"] });
           }
         } catch (e) { }
 
@@ -633,7 +647,7 @@
         }
         // generic project filter
         var no_projectfilter = ["mutations","genes","mutations","donors","gene","occurrences", "repository/files","repository/files/summary"] ;
-        var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts"];
+        var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts","donor-mutations"];
         var doNotfilterByProject = 0 ;
         if (!queryParams.filters) {
           doNotfilterByProject++;
@@ -649,7 +663,6 @@
 
         var filtered = false;
         if (!doNotfilterByProject) {
-          console.log("filtering",url);
           filtered = true;
 
           if (!queryParams.filters.project) {
@@ -662,14 +675,17 @@
                 _intersection = _whiteListedProjects;
               }
               queryParams.filters.project.id.is = _intersection;
+              _logAuthorization({"url":url, "filter": queryParams.filters });
             }
             if(queryParams.filters.project.id.not) {
               var _projects = queryParams.filters.project.id.not;
               delete queryParams.filters.project.id.not;
               queryParams.filters.project.id.is = _.difference(_whiteListedProjects,_projects);
+              _logAuthorization({"url":url, "filter": queryParams.filters });
             }
           } else {
             queryParams.filters.project.id = {"is":_whiteListedProjects};
+            _logAuthorization({"url":url, "filter": queryParams.filters });
           }
 
         }
@@ -685,6 +701,7 @@
           if (!queryParams.filters.file.projectCode) {
             queryParams.filters.file.projectCode = {} ;
             queryParams.filters.file.projectCode.is = _whiteListedProjects;
+            _logAuthorization({"url":url, "filter": queryParams.filters });
           }
         }
         if (!filtered && what === "donors") {
@@ -692,6 +709,7 @@
             queryParams.filters.donor = {} ;
           }
           queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
+          _logAuthorization({"url":url, "filter": queryParams.filters });
         }
 
         /** TODO redact responses from

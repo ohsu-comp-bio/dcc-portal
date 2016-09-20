@@ -36,16 +36,23 @@
 
     function checkSession(succ) {
       user.verifying = true;
-      Settings.get().then(function(settings){
-         if (!settings.authEnabled){
-            user.disabled = true;
-            user.verifying = false;
-            return;
-         }
-         handler.one('verify').get().then(succ, function(){
-           user.verifying = false;
-         });
-      });
+      // get ccc_info
+      var roles = $cookies.get("ccc_search_authorization_roles");
+      if (roles) {
+        _.assign(user, JSON.parse(roles))
+        user.token = 'ccc';
+        var role = _.filter(user.roles,  function(r) { return r.resource.applications[0].name === 'Portal'; })[0];
+        user.ccc_projects = _.reduce(role.resource.search_indexes,
+                            function(result, value, key) {
+                              result.push(value.name);
+                              return result;
+                            }
+                            ,[]);
+        window._whiteListedProjects = user.ccc_projects ;
+
+      }
+      user.verifying = false;
+
     }
 
     function login(data) {
@@ -62,15 +69,23 @@
     function deleteCookies() {
       delete $cookies.dcc_session;
       delete $cookies.dcc_user;
+      //$cookies.remove("ccc_search_authorization_roles")
       Restangular.setDefaultRequestParams({});
-      $window.location.reload();
     }
 
     function logout() {
       user.verifying = false;
-      handler.post('logout').then(function () {
+      if(user.token !== 'ccc') {
+        handler.post('logout').then(function () {
+          deleteCookies();
+          $window.location.reload();
+        });
+      } else {
         deleteCookies();
-      });
+        Settings.get().then(function(settings) {
+          $window.location = settings.ssoCCC + encodeURIComponent($window.location.href);
+        });
+      }
     }
 
     function getUser() {
@@ -94,6 +109,8 @@
           redirect(settings.ssoUrl);
         } else if (provider === 'google') {
           redirect(settings.ssoUrlGoogle);
+        }  else if (provider === 'ccc') {
+          redirect(settings.ssoCCC);
         }
       });
     }
@@ -145,7 +162,7 @@
     function ($window, $scope, $location, $modal, Auth, CUD, OpenID, $state, $stateParams, PortalFeature) {
 
       $scope.params = {};
-      $scope.params.provider = 'google';
+      $scope.params.provider = 'ccc';
       $scope.params.error = null;
       $scope.params.user = null;
       $scope.params.openIDUrl = null;
@@ -158,7 +175,7 @@
             urlPath = $location.path().toLowerCase();
 
         switch(urlPath) {
-          // Currently, we only want a refresh for releases. 
+          // Currently, we only want a refresh for releases.
           case '/releases':
             shouldRefresh = true;
             break;
@@ -280,7 +297,7 @@
       $scope.tryLogin = function () {
         $scope.connecting = true;
 
-        if ( ['icgc', 'google'].indexOf($scope.params.provider) >= 0) {
+        if ( ['icgc', 'google', 'ccc'].indexOf($scope.params.provider) >= 0) {
           CUD.login( $scope.params.provider );
         } else {
           OpenID.provider(providerMap($scope.params.provider)).then(
