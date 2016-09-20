@@ -3,6 +3,6 @@ $ICGC_BRANDING = {
   'footerCaptionHref':'http://www.ohsu.edu/',
   'footerLogoImgSrc':'https://cloud.githubusercontent.com/assets/2043709/18405558/d1989c0c-76c0-11e6-91eb-0d381b16527b.png',
   'footerLogoImgHref':'http://www.ohsu.edu/',
-  'headerCaption':'Knight Cancer',
-  'headerLogoImgSrc':'https://www.ohsu.edu/custom/knight-diagnostic-labs/images/default-source/default-album/logo-institute.png?sfvrsn=2',
+  'headerCaption':'',
+  'headerLogoImgSrc':'/styles/images/ohsu-header.png',
 };
