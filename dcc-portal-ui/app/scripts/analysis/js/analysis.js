@@ -201,6 +201,11 @@
   var module = angular.module('icgc.analysis.services', ['restangular']);
 
   var analysesStrings = {
+      wdl: {
+        name: 'WDL Operations',
+        description: 'Finally a workflow language meant to be read and written by humans.',
+        demoDescription: '"Hello world" WDL workflows in the CCC Context. WDL script: workflow, task, call, command and output.'
+      },
       set: {
         name: 'Set Operations',
         description: 'Display Venn diagram and find out intersection or union, etc. of your sets of the same type.',
@@ -219,7 +224,7 @@
         name: 'Survival Analysis / Phenotype Comparison',
         description: 'Display the survival analysis of your donor sets and compare some characteristics' +
         ' such as gender, vital status and age at diagnosis between your donor sets.',
-        demoDescription: 'Display survival analysis and compare phenotypes across brain, breast, and ' + 
+        demoDescription: 'Display survival analysis and compare phenotypes across brain, breast, and ' +
         'colorectal cancer donors.'
       },
       oncogrid: {
