@@ -1,0 +1,58 @@
+<div class="modal-content">
+    <!-- header -->
+    <div class="modal-header clearfix">
+        <h3 class="pull-left">Perform WDL Analysis</h3>
+        <button class="pull-right t_button" data-ng-click="cancel()"><i class="icon-cancel"></i>
+        </button>
+    </div>
+
+    <!-- body -->
+    <div class="modal-body">
+       <ol>
+           <li data-ng-if="!filters">
+               <div>
+                   <div>Select number of genes to be analyzed: ({{geneLimit}} maximum) </div>
+                   <input type="text" size="6"
+                       data-ng-model="params.maxGeneCount"
+                       integer-validator
+                       data-ng-change="checkInput()">
+                   <br>
+                   <br>
+               </div>
+           </li>
+           <li>
+               <div>
+                   <div>Workflow script</div>
+                   <textarea
+                     data-ng-model="params.script">
+                   </textarea>
+               </div>
+           </li>
+           <li>
+             <div>
+                 <div>Workflow inputs</div>
+                 <textarea
+                   data-ng-model="params.inputs">
+                 </textarea>
+             </div>
+           </li>
+           <li>
+             <div>
+                 <div>Workflow context</div>
+                 <textarea
+                   data-ng-model="params.context">
+                 </textarea>
+             </div>
+           </li>
+       </ol>
+    </div>
+
+    <!-- footer -->
+    <div class="modal-footer">
+        <button class="t_button" data-ng-click="cancel(); reset();">Cancel</button>
+        <button class="t_button" data-ng-click="newWDLSubmit()"
+            data-ng-disabled="! hasValidParams || isLaunchingEnrichmentUpload()">
+            <span data-ng-if="isLaunchingEnrichmentUpload()"><i class="icon-spinner icon-spin"></i></span>
+            Submit</button>
+    </div>
+</div>
