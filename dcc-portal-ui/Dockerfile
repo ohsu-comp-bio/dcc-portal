@@ -11,4 +11,3 @@ RUN npm install ; npm install -g bower ; bower install
 RUN apt-get update; apt-get -y install ruby-full rubygems
 RUN gem install bundler -v 1.5.3 ; bundle install
 
-RUN npm run sethost
