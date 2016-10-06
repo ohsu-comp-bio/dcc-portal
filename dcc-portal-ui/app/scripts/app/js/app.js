@@ -708,7 +708,9 @@
           if (!queryParams.filters.donor) {
             queryParams.filters.donor = {} ;
           }
-          queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
+          if (!queryParams.filters.donor.projectId) {
+            queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
+          }
           _logAuthorization({"url":url, "filter": queryParams.filters });
         }
 
