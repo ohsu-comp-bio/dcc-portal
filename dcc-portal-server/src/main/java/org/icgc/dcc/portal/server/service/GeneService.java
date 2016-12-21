@@ -1,6 +1,5 @@
 package org.icgc.dcc.portal.server.service;
 
-import static com.google.common.base.Throwables.propagate;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -25,7 +24,7 @@ import org.elasticsearch.common.lang3.tuple.Pair;
 import org.elasticsearch.search.SearchHit;
 import org.icgc.dcc.portal.server.model.Gene;
 import org.icgc.dcc.portal.server.model.Genes;
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
+import org.icgc.dcc.portal.server.model.EntityType;
 import org.icgc.dcc.portal.server.model.Pagination;
 import org.icgc.dcc.portal.server.model.Query;
 import org.icgc.dcc.portal.server.pql.convert.AggregationToFacetConverter;
@@ -90,8 +89,7 @@ public class GeneService {
 
       log.info("[init] Finished initializing EnsemblId-to-GeneSymbol lookup table in {}", watch);
     } catch (Exception e) {
-      log.error("[init] Error intializing EnsemblId-to-GeneSymbol lookup table.", e);
-      propagate(e);
+      log.error("[init] Error intializing EnsemblId-to-GeneSymbol lookup table: {}", e.getMessage());
     }
   }
 
@@ -154,17 +152,17 @@ public class GeneService {
       val matchedGene = geneText2Gene(hit);
 
       // Check which search field got the "hit"
-      for (val searchField : GENE_ID_SEARCH_FIELDS.keySet()) {
+      for (val searchField : GENE_ID_SEARCH_FIELDS.entrySet()) {
 
-        if (highlightedFields.containsKey(searchField)) {
+        if (highlightedFields.containsKey(searchField.getKey())) {
 
-          val field = GENE_ID_SEARCH_FIELDS.get(searchField);
+          val field = searchField.getValue();
 
           // Note: it is possible that a gene hit has multiple uniprot ids (TAF9, FAU, to name a few)
           // Because we need to group by the inpu, we need to figure out which one of the uniprot ids
           // was in the input identifiers - this requires us to normalize to lower case to make the comparisons
           if (field.equals(GENE_UNIPROT_IDS)) {
-            val keys = fields.get(searchField).getValues();
+            val keys = fields.get(searchField.getKey()).getValues();
 
             for (val key : keys) {
               if (ids.contains(key.toString().toLowerCase())) {
@@ -172,7 +170,7 @@ public class GeneService {
               }
             }
           } else {
-            val key = getString(fields.get(searchField).getValues());
+            val key = getString(fields.get(searchField.getKey()).getValues());
             result.get(field).put(key, matchedGene);
           }
         }
@@ -206,7 +204,7 @@ public class GeneService {
 
     val pql =
         facetsOnly ? QUERY_CONVERTER.convertCount(query, GENE_CENTRIC) : QUERY_CONVERTER.convert(query, GENE_CENTRIC);
-    log.info("PQL of findAllCentric is: {}", pql);
+    log.debug("PQL of findAllCentric is: {}", pql);
 
     val pqlAst = parse(pql);
     val response = geneRepository.findAllCentric(pqlAst);
@@ -217,7 +215,7 @@ public class GeneService {
     val list = ImmutableList.<Gene> builder();
 
     for (val hit : hits) {
-      val fieldMap = createResponseMap(hit, query, Kind.GENE);
+      val fieldMap = createResponseMap(hit, query, EntityType.GENE);
 
       if (includeScore) {
         fieldMap.put("_score", hit.getScore());
@@ -297,7 +295,7 @@ public class GeneService {
    * Convert result from gene-text to a gene model
    */
   private Gene geneText2Gene(SearchHit hit) {
-    val fieldMap = createResponseMap(hit, Query.builder().build(), Kind.GENE);
+    val fieldMap = createResponseMap(hit, Query.builder().build(), EntityType.GENE);
     Map<String, Object> geneMap = Maps.newHashMap();
     fieldMap.forEach((k, v) -> {
       geneMap.put(GENE_ID_SEARCH_FIELDS.get(k), v);

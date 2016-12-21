@@ -1,7 +1,6 @@
 package org.icgc.dcc.portal.server.service;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
-import static java.util.Comparator.comparing;
 import static java.util.stream.IntStream.range;
 import static org.dcc.portal.pql.meta.Type.MUTATION_CENTRIC;
 import static org.dcc.portal.pql.query.PqlParser.parse;
@@ -11,14 +10,13 @@ import static org.icgc.dcc.portal.server.util.SearchResponses.getCounts;
 import static org.icgc.dcc.portal.server.util.SearchResponses.getNestedCounts;
 import static org.icgc.dcc.portal.server.util.SearchResponses.getTotalHitCount;
 
-import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.elasticsearch.action.search.MultiSearchResponse;
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
+import org.icgc.dcc.portal.server.model.EntityType;
 import org.icgc.dcc.portal.server.model.Mutation;
 import org.icgc.dcc.portal.server.model.Mutations;
 import org.icgc.dcc.portal.server.model.Pagination;
@@ -30,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
@@ -40,7 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor(onConstructor = @__({ @Autowired }) )
+@RequiredArgsConstructor(onConstructor = @__({ @Autowired }))
 public class MutationService {
 
   private static final AggregationToFacetConverter AGGS_TO_FACETS_CONVERTER = AggregationToFacetConverter.getInstance();
@@ -58,7 +57,7 @@ public class MutationService {
     val pql =
         facetsOnly ? QUERY_CONVERTER.convertCount(query, MUTATION_CENTRIC) : QUERY_CONVERTER.convert(query,
             MUTATION_CENTRIC);
-    log.info("PQL of findAllCentric is: {}", pql);
+    log.debug("PQL of findAllCentric is: {}", pql);
 
     val pqlAst = parse(pql);
     val response = mutationRepository.findAllCentric(pqlAst);
@@ -71,7 +70,7 @@ public class MutationService {
     val list = ImmutableList.<Mutation> builder();
 
     for (val hit : hits) {
-      val map = createResponseMap(hit, query, Kind.MUTATION);
+      val map = createResponseMap(hit, query, EntityType.MUTATION);
       if (includeScore) map.put("_score", hit.getScore());
       list.add(new Mutation(map));
     }
@@ -90,7 +89,7 @@ public class MutationService {
     val list = ImmutableList.<Mutation> builder();
 
     for (val hit : hits) {
-      val map = createResponseMap(hit, query, Kind.MUTATION);
+      val map = createResponseMap(hit, query, EntityType.MUTATION);
       map.put("_score", hit.getScore());
       list.add(new Mutation(map));
     }
@@ -110,7 +109,7 @@ public class MutationService {
     return getCounts(queries, sr);
   }
 
-  public List<SimpleImmutableEntry<String, Long>> counts(@NonNull List<String> geneIds,
+  public List<Map<String, Object>> counts(@NonNull List<String> geneIds,
       LinkedHashMap<String, Query> queries,
       int maxSize,
       boolean sortDescendingly) {
@@ -119,14 +118,14 @@ public class MutationService {
         .distinct()
         .collect(toImmutableList());
 
-    final Comparator<SimpleImmutableEntry<String, Long>> comparator = comparing(SimpleImmutableEntry::getValue);
+    final Comparator<Map<String, Object>> comparator =
+        (a, b) -> ((Long) a.get("mutationCount")).compareTo((Long) b.get("mutationCount"));
     final MultiSearchResponse.Item[] responseItems = mutationRepository.counts(queries).getResponses();
 
     return range(0, responseItems.length).boxed()
         .map(i -> {
           final long count = getTotalHitCount(responseItems[i].getResponse());
-
-          return new SimpleImmutableEntry<String, Long>(genes.get(i), count);
+          return ImmutableMap.<String, Object> of("geneId", genes.get(i), "mutationCount", count);
         })
         .sorted(sortDescendingly ? comparator.reversed() : comparator)
         .limit(maxSize)
@@ -174,11 +173,15 @@ public class MutationService {
         transcript.put("functional_impact_prediction_summary", predictionSummary.get(i));
 
         val consequence = Maps.<String, Object> newHashMap();
-        List<Object> f3 = hit.getFields().get("transcript.consequence.aa_mutation").getValues();
-        consequence.put("aa_mutation", f3.get(i).toString());
-        transcript.put("consequence", consequence);
+        List<Object> aminoAcidChange = hit.getFields().get("transcript.consequence.aa_mutation").getValues();
+        val mutationString = aminoAcidChange.get(i).toString();
 
-        transcripts.add(transcript);
+        // Only add to results if not empty.
+        if (!mutationString.isEmpty()) {
+          consequence.put("aa_mutation", mutationString);
+          transcript.put("consequence", consequence);
+          transcripts.add(transcript);
+        }
       }
 
       map.put("transcript", transcripts);

@@ -17,14 +17,13 @@
 
 package org.icgc.dcc.portal.server.service;
 
-import static com.google.common.base.Throwables.propagate;
 import static org.icgc.dcc.portal.server.util.ElasticsearchResponseUtils.createResponseMap;
 
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
+import org.icgc.dcc.portal.server.model.EntityType;
 import org.icgc.dcc.portal.server.model.Occurrence;
 import org.icgc.dcc.portal.server.model.Occurrences;
 import org.icgc.dcc.portal.server.model.Pagination;
@@ -62,9 +61,7 @@ public class OccurrenceService {
 
       log.info("[init] Finished initializing donor mutations cache in {}", watch);
     } catch (Exception e) {
-      log.error("[init] Error initializing donor mutations cache: ", e);
-
-      propagate(e);
+      log.error("[init] Error initializing donor mutations cache: {}", e.getMessage());
     }
   }
 
@@ -74,7 +71,7 @@ public class OccurrenceService {
     val list = ImmutableList.<Occurrence> builder();
 
     for (val hit : hits) {
-      val fieldMap = createResponseMap(hit, query, Kind.OCCURRENCE);
+      val fieldMap = createResponseMap(hit, query, EntityType.OCCURRENCE);
       list.add(new Occurrence(fieldMap));
     }
 

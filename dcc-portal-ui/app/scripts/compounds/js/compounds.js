@@ -27,9 +27,11 @@ angular.module('icgc.compounds', ['icgc.compounds.controllers', 'icgc.compounds.
       templateUrl: 'scripts/compounds/views/compound.html',
       controller: 'CompoundCtrl as CompoundCtrl',
       resolve: {
-        compoundManager: ['Page', '$stateParams', 'CompoundsService', function (Page, $stateParams, CompoundsService) {
+        compoundManager: ['Page', '$stateParams', 'CompoundsService', 'gettextCatalog', 
+        function (Page, $stateParams, CompoundsService, gettextCatalog) {
+
           Page.startWork();
-          Page.setTitle('Compounds');
+          Page.setTitle(gettextCatalog.getString('Compounds'));
           Page.setPage('entity');
           return CompoundsService.getCompoundManagerFactory($stateParams.compoundId);
         }]
@@ -41,15 +43,23 @@ angular.module('icgc.compounds', ['icgc.compounds.controllers', 'icgc.compounds.
 angular.module('icgc.compounds.controllers', ['icgc.compounds.services'])
   .controller('CompoundCtrl', function ($scope, compoundManager, CompoundsService, Page,
                                         FilterService, CompoundsServiceConstants,
-                                        $location, $timeout) {
+                                        $location, $timeout, gettextCatalog, $filter) {
 
     var _ctrl = this,
         _compound = null,
-        _targetedCompoundGenes = null,
+        _targetedCompoundGenes = [],
         _targetedCompoundGenesResultPerPage = 10,
+        _targetGenes = [],
         _targetCompoundResultPage = 0,
         _targetedCompoundIds = [],
         _mutationalImpactFacets = null;
+
+    // Defaults for client side pagination 
+    _ctrl.currentGenesPage = 1;
+    _ctrl.defaultGenesRowLimit = 10;
+    _ctrl.currentClinicalTrailsPage = 1;
+    _ctrl.defaultClinicalTrialsRowLimit = 10;
+    _ctrl.rowSizes = [10, 25, 50];
 
 
     function getMutationImpactFacets() {
@@ -67,7 +77,7 @@ angular.module('icgc.compounds.controllers', ['icgc.compounds.services'])
 
       // If we are linked to the page and we have a hash, wait for render to finish and scroll to position. 
       $timeout(function () {
-        if (typeof current !== 'undefined' && current!== null && current !== '#summary') {
+        if (current && current !== '#summary') {
           jQuery('body,html').stop(true, true);
           var offset = jQuery(current).offset();
           var to = offset.top - 40;
@@ -80,16 +90,15 @@ angular.module('icgc.compounds.controllers', ['icgc.compounds.services'])
       compoundManager.filters(FilterService.filters());
 
       _initCompound();
-
-      Page.setTitle('Compounds - ' + _compound.name.toUpperCase());
+      /// ${compoundName} compound name
+      Page.setTitle(_.template(gettextCatalog.getString('Compounds - ${compoundName}'))({compoundName: _compound.name.toUpperCase()}));
       Page.stopWork();
       fixScroll();
     }
 
     function _initTargetedCompoundGenes(targetGenes) {
       _targetedCompoundGenes = targetGenes;
-      _targetedCompoundIds.length = 0;
-      _targetedCompoundIds = _targetedCompoundIds.concat(compoundManager.getTargetedCompoundGeneIds());
+      _targetGenes = getUiTargetedCompoundGenesJSON(_targetedCompoundGenes);
     }
 
     function _initCompound() {
@@ -121,6 +130,25 @@ angular.module('icgc.compounds.controllers', ['icgc.compounds.services'])
         .finally(function() {
           Page.stopWork();
         });
+    }
+
+    // Creating a new Object for table filters
+    function getUiTargetedCompoundGenesJSON(genes){
+      return genes.map(function (gene) {
+        return _.extend({}, gene, {
+          uiId: gene.id,
+          uiName: gene.name,
+          uiSymbol: gene.symbol,
+          uiLocation: 'chr' + gene.chromosome + ':' + gene.start +'-' + gene.end,
+          uiType: $filter('trans')(gene.type),
+          uiAffectedDonorCountFilter: gene.affectedDonorCountFilter,
+          uiAffectedDonorCountFiltered: $filter('number')(gene.affectedDonorCountFiltered),
+          uiAffectedDonorCountTotal: $filter('number')(_ctrl.getAffectedDonorCountTotal()),
+          uiAffectedDonorCountTotalPercentage: $filter('number')((gene.affectedDonorCountFiltered/_ctrl.getAffectedDonorCountTotal() * 100), 2) + '%',
+          uiMutationCountTotal: $filter('number')(gene.mutationCountTotal),
+          uiMutationCountFilter : gene.mutationCountFilter
+        });
+      });
     }
 
     _init();
@@ -156,7 +184,7 @@ angular.module('icgc.compounds.controllers', ['icgc.compounds.services'])
     };
 
     _ctrl.getTargetedCompoundGenes = function() {
-      return _targetedCompoundGenes;
+      return _targetGenes;
     };
 
     _ctrl.getTargetedGeneCount = function() {
@@ -180,6 +208,13 @@ angular.module('icgc.compounds.controllers', ['icgc.compounds.services'])
       return _compound;
     };
 
+    // Watch to get affected donor count total once genes promise finishes loading
+    $scope.$watch(function(){
+      return compoundManager.getAffectedDonorCountTotal();
+    }, function(){
+      _targetGenes = getUiTargetedCompoundGenesJSON(_targetedCompoundGenes);
+    });
+
   });
 
 angular.module('icgc.compounds.services', ['icgc.genes.models'])
@@ -189,7 +224,7 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
     }
   })
   .service('CompoundsService', function($rootScope, $q, Gene, Mutations, Page, FilterService, $location,
-                                        Restangular, CompoundsServiceConstants, Extensions) {
+                                        Restangular, CompoundsServiceConstants, Extensions, $state) {
 
     function _arrayOrEmptyArray(arr) {
       return angular.isArray(arr) ?  arr : [];
@@ -210,8 +245,8 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
               return id !== null && id.length > 0;
             }),
           _drugGenesLength = _genes.length,
-          _trials = _arrayOrEmptyArray(compound.trials);
-
+          _trials = _arrayOrEmptyArray(compound.trials),
+          _uiTrials = getUiTrialsJSON(compound.trials);
 
       return {
         id: _id,
@@ -225,7 +260,8 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
         atcCodes: _atcCodes,
         genes: _genes,
         drugGenesLength: _drugGenesLength,
-        trials: _trials
+        trials: _trials,
+        uiTrials: _uiTrials
       };
     }
 
@@ -256,12 +292,21 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
 
     }
 
+    // Creating a new Object for table filters
+    function getUiTrialsJSON(trials){
+      return _arrayOrEmptyArray(trials.map(function (trial) {
+        return _.extend({}, {
+          uiCode: trial.code,
+          uiDescription: trial.description,
+          uiConditions: trial.conditions,
+          uiStartDate: trial.startDate,
+          uiPhaseName: trial.phaseName.split('/'),
+          uiStatusName: trial.statusName
+        });
+      }));
+    }
+
     var _srv = this;
-
-
-
-
-
 
     function CompoundManager(compoundId) {
       var _self = this,
@@ -275,7 +320,7 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
       // For application/json format
       function _params2JSON(type, params) {
         var data = {};
-        data.filters = encodeURI(JSON.stringify(params.filters));
+        data.filters = params.filters;
         data.type = type.toUpperCase();
         data.name = params.name;
         data.description = params.description || '';
@@ -289,8 +334,6 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
         if (angular.isDefined(params.filters) && !angular.isDefined(params.sortBy)) {
           if (type === 'donor') {
             data.sortBy = 'ssmAffectedGenes';
-          } else if (type === 'gene') {
-            data.sortBy = 'affectedDonorCountFiltered';
           } else {
             data.sortBy = 'affectedDonorCountFiltered';
           }
@@ -313,6 +356,11 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
           .then(function(compound) {
             _compoundEntity = _compoundEntityFactory(compound.plain());
             defer.resolve(_self);
+          }, function(error){
+            if(error.status === 404){
+              Page.stopWork();
+              $state.go('404', {page: 'compound', id: compoundId, url: '/compound/:id'}, {location: false});
+            }
           });
 
         return deferPromise;
@@ -405,11 +453,11 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
 
             for (var i = 0; i < geneCount; i++) {
               var mutationData = mutationCountData[i],
-                geneId = _.get(mutationData, 'key', false);
+                geneId = _.get(mutationData, 'geneId', false);
 
               if (geneId) {
                 _compoundTargetedGeneIds.push(geneId);
-                mutationGeneValueMap[geneId] = +mutationData.value;
+                mutationGeneValueMap[geneId] = +mutationData.mutationCount;
               }
             }
 
@@ -502,9 +550,7 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
       _self.getCompoundMutations = function(geneStartIndex, geneLimit) {
         var params = _getResultsCompoundGenesFilter(geneLimit);
         delete params.from;
-        //delete params.filters;
-
-
+        
         return Restangular
             .one('drugs')
             .one(compoundId)
@@ -609,5 +655,8 @@ angular.module('icgc.compounds.services', ['icgc.genes.models'])
         size: 10000, //TODO: Use paging to retrieve drugs instead of hard coding size limit
         filters: {gene:{id:{is:['ES:' + entitySetId]}}}
       });
+    };
+    _srv.getCompoundByZincId = function (zincId) {
+      return Restangular.one('drugs').one(zincId).get();
     };
   });

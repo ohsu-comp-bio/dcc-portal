@@ -26,17 +26,15 @@ import static org.icgc.dcc.portal.server.util.ElasticsearchResponseUtils.getStri
 import java.util.List;
 import java.util.Map;
 
-import lombok.Value;
-import lombok.val;
-
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.Value;
+import lombok.val;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -77,7 +75,7 @@ public class GeneSet {
   @SuppressWarnings("unchecked")
   @JsonCreator
   public GeneSet(Map<String, Object> fieldMap) {
-    val fields = FIELDS_MAPPING.get(Kind.GENE_SET);
+    val fields = FIELDS_MAPPING.get(EntityType.GENE_SET);
     id = getString(fieldMap.get(fields.get("id")));
     name = getString(fieldMap.get(fields.get("name")));
     source = getString(fieldMap.get(fields.get("source")));
@@ -87,7 +85,7 @@ public class GeneSet {
 
     // Reactome pathway specific fields
     hierarchy = buildPathwayHierarchy((List<List<Map<String, Object>>>) fieldMap.get(SOURCE_FIELDS.get("hierarchy")));
-    diagrammed = String.valueOf(getBoolean((fieldMap.get(fields.get("diagrammed")))));
+    diagrammed = String.valueOf(getBoolean(fieldMap.get(fields.get("diagrammed")), false));
 
     // Gene ontology specific fields
     ontology = getString(fieldMap.get(fields.get("ontology")));

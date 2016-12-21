@@ -80,6 +80,11 @@ body {
 
 .content {
   @include clearfix();
+
+  .t_sidebar + article {
+    position: relative;
+    z-index: 1;
+  }
 }
 
 /*
@@ -96,6 +101,10 @@ footer, .push {
 aside {
   @include clearfix();
   @include grid-span(2, 1);
+
+  &.t_sidebar{
+    @include grid-span(2.2, 1);
+  }
 }
 
 article {
@@ -181,4 +190,24 @@ section {
 .flex-column {
   @extend .flex;
   flex-direction: column;
+}
+
+.flex-center {
+  justify-content: center;
+  align-items: center;
+}
+
+.sticky {
+  position: sticky;
+  &--with-defaults {
+    background: white;
+    box-shadow: 3px 2px 1px 0px rgba(0,0,0,0.1);
+  }
+  &--secondary {
+    top: 60px;
+  }
+}
+
+.flex-grow {
+  flex-grow: 1;
 }
