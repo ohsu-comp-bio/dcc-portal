@@ -24,7 +24,7 @@ var mountFolder = function (connect, dir) {
 };
 
 var proxySnippet = require('grunt-connect-proxy/lib/utils').proxyRequest;
-var HOSTNAME = 'local.dcc.icgc.org';
+var HOSTNAME = '0.0.0.0';
 var apiProxySettings = process.env.API_SOURCE === 'production' ? {
       context: '/api',
       host: 'dcc.icgc.org',
@@ -133,8 +133,8 @@ module.exports = function (grunt) {
     },
     connect: {
       options: {
-        port: 9000,
-        protocol: 'https',
+        port: 8000,
+        protocol: 'http',
         // Change this to '0.0.0.0' to access the server from outside.
         hostname: HOSTNAME
       },
@@ -500,7 +500,7 @@ module.exports = function (grunt) {
   grunt.registerTask('bower-install', ['bower-install-simple']);
 
   // A very basic task to read from process.env
-  grunt.registerTask('branding_customize', 'Override UI images and strings. see app/branding/scripts/config.js', function() {
+  grunt.registerTask('branding_customize', 'Override UI: see app/branding/scripts/config.js', function() {
     if (process.env.ICGC_BRANDING) {
       var _fileName = grunt.template.process('<%= yeoman.app %>/branding/scripts/custom.js');
       grunt.file.write(_fileName, '$ICGC_BRANDING = ' + process.env.ICGC_BRANDING);
@@ -541,6 +541,7 @@ module.exports = function (grunt) {
 
   grunt.registerTask('build', [
     'ICGC-setBuildEnv:production',
+    'branding_customize',
     'clean:dist',
     'compass:dist', // run in case files were changed outside of grunt server (dev environment)
     'postcss',
