@@ -22,7 +22,7 @@ module.exports = {
     path: paths.appBuild,
     pathinfo: true,
     filename: 'static/js/[name].js',
-    publicPath: 'http://local.dcc.icgc.org:9000/',
+    publicPath: 'http://10.96.11.96:8000',
   },
   resolve: {
     extensions: ['', '.js', '.json'],
