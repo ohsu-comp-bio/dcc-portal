@@ -3,7 +3,7 @@
         <form class="t_suggest">
             <input
                     class="t_suggest__input"
-                    placeholder="e.g. BRAF, KRAS G12D, DO35100, MU7870, FI998, apoptosis, Cancer Gene Census, imatinib, GO:0016049"
+                    placeholder="{{'e.g. BRAF, KRAS G12D, DO35100, MU7870, FI998, apoptosis, Cancer Gene Census, imatinib, GO:0016049' | translate}}"
                     autofocus="true"
                     data-suggest
                     />
@@ -14,7 +14,7 @@
         </form>
     </div>
     <section>
-        <h3>About Us</h3>
+        <h3><translate>About Us</translate></h3>
 
           <p>The OHSU Knight Cancer Institute Data Portal provides tools for visualizing, querying, and downloading molecular and clinical data from OHSU projects together with large-scale public datasets.</p>
 
@@ -31,45 +31,45 @@
 
     </section>
     <section class="text-center" data-ng-controller="ReleaseCtrl as ReleaseCtrl">
-        <h3>Data Release {{ ReleaseCtrl.release.releaseNumber }}</h3>
+        <h3><translate>Data Release</translate> {{ ReleaseCtrl.release.releaseNumber }}</h3>
         <h3 class="subhead">{{ ReleaseCtrl.applicationReleaseDate }}</h3>
         <donut home=true items='ReleaseCtrl.donut' inner-label='Donors' outer-label='Donors'
-               heading="Donor Distribution by Primary Site" height="325" should-show-no-data-message="false"></donut>
+               heading="{{'Donor Distribution by Primary Site' | translate}}" height="325" should-show-no-data-message="false"></donut>
 
         <div class="summary-table-container">
             <table class="table table-striped table-bordered table-hover table-condensed">
                 <tbody>
                 <tr>
-                    <td>Cancer projects</td>
+                    <td><translate>Cancer projects</translate></td>
                     <td class="text-right">
                         <a href="/projects">{{ReleaseCtrl.release.projectCount | number}}</a>
                     </td>
                 </tr>
                 <tr>
-                    <td>Cancer primary sites</td>
+                    <td><translate>Cancer primary sites</translate></td>
                     <td class="text-right">{{ReleaseCtrl.release.primarySiteCount | number}}
                     </td>
                 </tr>
                 <tr>
-                    <td>Donors with molecular data in DCC</td>
+                    <td><translate>Donors with molecular data in DCC</translate></td>
                     <td class="text-right">
                         <a href="{{ReleaseCtrl.routeToAdvancedSearchPageWithLiveDonorStateFilter()}}">{{ReleaseCtrl.release.liveDonorCount | number}}</a>
                     </td>
                 </tr>
                 <tr>
-                    <td>Total Donors</td>
+                    <td><translate>Total Donors</translate></td>
                     <td class="text-right">
                         <a href="/search">{{ReleaseCtrl.release.donorCount | number}}</a>
                     </td>
                 </tr>
                 <tr>
-                    <td>Simple somatic mutations</td>
+                    <td><translate>Simple somatic mutations</translate></td>
                     <td class="text-right">
                         <a href="/search/m">{{ReleaseCtrl.release.ssmCount | number}}</a>
                     </td>
                 </tr>
                 <tr>
-                    <td>Mutated genes</td>
+                    <td><translate>Mutated Genes</translate></td>
                     <td class="text-right">
                         <a href='/search/g?filters={"donor":{"availableDataTypes":{"is":["ssm"]}}}'>
                         {{ReleaseCtrl.release.mutatedGeneCount | number}}</a>
@@ -80,22 +80,25 @@
         </div>
     </section>
     <section class="sidebar omega">
-        <h3>Tutorial</h3>
-        <h4>Example Queries</h4>
+        <h3><translate>Tutorial</translate></h3>
+        <h4><translate>Example Queries</translate></h4>
         <ol class="list">
             <li>
-                <a href='/search/m?filters={"gene":{"id":{"is":["ENSG00000157764"]}},"mutation":{"consequenceType":{"is":["missense_variant"]}},"donor":{"primarySite":{"is":["Colorectal"]}}}'>BRAF
-                    missense mutations in colorectal cancer</a></li>
+                <a href='/search/m?filters={"gene":{"id":{"is":["ENSG00000157764"]}},"mutation":{"consequenceType":{"is":["missense_variant"]}},"donor":{"primarySite":{"is":["Colorectal"]}}}'>
+                    <translate>BRAF missense mutations in colorectal cancer</translate>
+                </a>
+            </li>
             <li>
                 <a href='/search/g?filters={"mutation":{"functionalImpact":{"is":["High"]}}, "donor":{"projectId":{"is":["MALY-DE"]}, "tumourStageAtDiagnosis":{"is":["III"]}}}'>
-                Most frequently mutated genes by high impact mutations in stage III malignant lymphoma </a></li>
+                    <translate>Most frequently mutated genes by high impact mutations in stage III malignant lymphoma</translate>
+                </a>
+            </li>
             <li>
-                <a href='/search?filters={"donor":{"primarySite":{"is":["Brain"]}, "availableDataTypes":{"is":["meth_array", "meth_seq"]}},"mutation":{"consequenceType":{"is":["frameshift_variant"]}}}'>Brain
-                    cancer donors with frameshift mutations and having methylation data available</a></li>
+                <a href='/search?filters={"donor":{"primarySite":{"is":["Brain"]}, "availableDataTypes":{"is":["meth_array", "meth_seq"]}},"mutation":{"consequenceType":{"is":["frameshift_variant"]}}}'>
+                    <translate>Brain cancer donors with frameshift mutations and having methylation data available</translate>
+                </a>
+            </li>
         </ol>
-        <!--
-        <div data-ng-include src="'views/common/twitter.html'"></div>
-         -->
     </section>
     <section class="sidebar icgc-cloud-home">
         <div class="divider"></div>

@@ -7,37 +7,32 @@ ICGC DCC - Portal UI
 Requiments
 ---
 
-- Install [node.js](http://nodejs.org/download/ )
-- Install ruby
-- Install rubygems
-- Install global modules:
+- Node >= 6  
+  Instructions for installing Node via nvm   
+  https://github.com/creationix/nvm#install-script  
+  https://github.com/creationix/nvm#usage  
 
-	```
-	npm install -g grunt-cli@0.1.13
-	npm install -g bower@1.3.12
-	npm install -g bower-art-resolver
-	```
+- npm >= 3
+  ```bash
+  npm install npm@latest -g
+  ```
+
+- yarn >= 0.17
+  ```
+  brew update
+  brew install yarn
+  ```
+  Other methods:  
+  https://yarnpkg.com/en/docs/install#linux-tab
 
 Setup
 ---
 
-- Install local modules
+- Install npm and bower dependencies
 
 	```
-	npm install
-	```
-	
-- Install client-side dependencies	
-	```
-	npm install -g bower
-	bower install
-	```
-	
-- Install ruby gems
-
-	```
-	sudo gem install bundler -v 1.5.3
-	bundle install
+	yarn
+    npm run bower # this installs bower dependencies
 	```
 
 Run
@@ -47,10 +42,24 @@ Run
 
 - Start the [Portal Server](../dcc-portal-server/README.md)
 
-- View the site: [localhost:9000](http://localhost:9000/)
+- View the site: [local.dcc.icgc.org:9000](http://local.dcc.icgc.org:9000/)
 
-- You can change some of the front end develop options (used `grunt server`) by modifying the `app/develop/scripts/config.js` file.
+Other Commands
+---
 
+```bash
+# Connect to the production server's API instead of a local backend
+npm run dev:prodapi
+
+# Connect to the staging API instead of local backend
+API_SOURCE=https://staging.dcc.icgc.org npm start
+
+# Adds local.dcc.icgc.org to your host file and point to localhost
+npm run sethost
+
+# Open fontello with the project's json config loaded
+npm run font:open
+```
 
 ## Basic Style Guide
 
@@ -157,14 +166,11 @@ its entirety or none at all.
         var _theMeaningOfLife = 42;
     ```
 
-### Keeping your Code Private + Code Commenting and Documentation
+### Code Commenting and Documentation
 
 * The bad example - contents of secrets.js
 
     ```javascript
-       // Without a function closure this becomes global (added to the window object in the browser!)
-       var _theMeaningOfLife = 42;
-
        // What does this method do?
        function meaningOfLife(meaningOfLifeVal) {
           // ... some implementation details
@@ -177,35 +183,15 @@ its entirety or none at all.
 * The good example - contents of secrets.js
 
     ```javascript
-       /**
-        * Anonymous executed function - use this comment style for multiline comments
-        * its also useful for documenting your functions - we use jsDoc syntax
-        * http://usejsdoc.org/about-getting-started.html
-        **/
-
-       (function() {
-            /**
-            * You should always include this little guy - it will tell your browser to be more
-            * watchful for common JS issues.
-            **/
-           'use strict';
-
-           // without a function closure this becomes global (added to the window object in the browser!)
-           var _theMeaningOfLife = 42;
-
-          /**
-           * Gets and sets the meaning of Life (this is a method description that is picked up by jsdocs).
-           * @param {string} meaningOfLifeVal - The new meaning of life.
-           * @returns {string} The current meaning of life.
-           */
-           function meaningOfLife(meaningOfLifeVal) {
-              // ...
-              return _theMeaningOfLife;
-           }
-
-           /* ... Some code ... */
-
-       })();
+        /**
+        * Gets and sets the meaning of Life (this is a method description that is picked up by jsdocs).
+        * @param {string} meaningOfLifeVal - The new meaning of life.
+        * @returns {string} The current meaning of life.
+        */
+        function meaningOfLife(meaningOfLifeVal) {
+            // ...
+            return _theMeaningOfLife;
+        }
     ```
 
 
@@ -265,9 +251,6 @@ Angular makes the controller available via the **$scope** variable irregardless 
 * An example of a module called projects in a file called projects.js
 
     ```javascript
-    (function () {
-      'use strict';
-
       // Projects modules definition including dependencies
       angular.module('session', ['session.controllers', 'ui.router'])
           .constant('sessionConstants', {
@@ -286,8 +269,6 @@ Angular makes the controller available via the **$scope** variable irregardless 
           .run(function(someDependency1, someDependency1, ..., someDependencyN) {
             /* ... Run block implementation ... */
           });
-
-    })();
     ```
 
 
@@ -323,9 +304,6 @@ you can do it inline as long as it does not span more then 3 lines.
 * A Good Example
 
     ```javascript
-      (function() {
-        'use strict';
-
         angular.module('session.controllers', [])
            /**
             * This controller does ...
@@ -367,7 +345,6 @@ you can do it inline as long as it does not span more then 3 lines.
           .controller('FixedSessionCtrl', function(someService) {
             /* ... */
           });
-    })();
     ```
 
 * If you must use ```$scope``` in your controllers/directives ensure that you are at least encapsulating your
@@ -378,9 +355,6 @@ you might run into with child scopes used in forms, subcontrollers, and directiv
 * A Bad Example
 
     ```javascript
-        (function() {
-            'use strict';
-
             angular.module('sessions.controller')
               .controller(function($scope) {
                 var _controller = this;
@@ -391,14 +365,10 @@ you might run into with child scopes used in forms, subcontrollers, and directiv
 
                 /* ... */
               });
-        })();
     ```
 * A Good Example
 
     ```javascript
-        (function() {
-            'use strict';
-
             angular.module('users.controllers')
               .controller('UserCtrl', function($scope) {
 
@@ -413,15 +383,14 @@ you might run into with child scopes used in forms, subcontrollers, and directiv
 
                 /* ... */
               });
-        })();
     ```
 
 Before Pull Request
 ---
 
-Pass JSHint: `grunt jshint`
+Pass JSHint: `npm run lint`
 
-Pass Unit tests: `grunt test`
+Pass Unit tests: `npm test`
 
 
 Tips

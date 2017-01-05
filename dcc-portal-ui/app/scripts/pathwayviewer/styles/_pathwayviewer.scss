@@ -59,7 +59,6 @@ $compartmentBorder:#ffc38b;
   }
   
   aside {
-    //display: inline-block;
     display: table-cell;
     width: 20%;
     float: none;
@@ -115,7 +114,6 @@ $compartmentBorder:#ffc38b;
     border: none;
     width: 100%;
     display: inline-block;
-    //display: table-cell;
     float: none;
     vertical-align: top;
     
@@ -306,8 +304,6 @@ $compartmentBorder:#ffc38b;
 }
 
 .pathway-legend-container {
-  //overflow-x: visible;
-  //overflow-y: auto;
   width: 100%;
   height: 100%;
 
@@ -320,14 +316,13 @@ $compartmentBorder:#ffc38b;
 .pathway-info{
   width: 50%;
   opacity: 0.95;
+  display: flex;
+  flex-direction: column;
 }
-
-
 
 .pathway-info-content{
   line-height: 1.4rem;
   padding:5%;
-  height: 70%;
   overflow-y: auto;
   
   .pathway-gene-table{
@@ -373,6 +368,10 @@ $compartmentBorder:#ffc38b;
   font-size: 1.3em;
   font-weight: normal;
   padding-top: 0.5em;
+}
+
+.pathway-info-controller {
+  position: absolute;
 }
 
 .pathway-legend-controller, .pathway-info-controller{

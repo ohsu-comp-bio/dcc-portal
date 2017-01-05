@@ -56,7 +56,7 @@ angular.module('icgc.modules.genomeviewer').controller('GenomeViewerController',
   var _controller = this;
 
 
-  _controller.getSpecies = function getSpecies(callback) {
+  _controller.getSpecies = function (callback) {
     CellBaseManager.get({
       host: GMService.getConfiguration().cellBaseHost,
       category: 'meta',
@@ -127,34 +127,34 @@ angular.module('icgc.modules.genomeviewer').controller('GenomeViewerController',
     document.addEventListener('fullscreenchange', _fullscreenHandler);
 
     $scope.$on('$destroy', function() {
-      document.removeEventListener('webkitfullscreenchange');
-      document.removeEventListener('mozfullscreenchange');
-      document.removeEventListener('fullscreenchange');
+      document.removeEventListener('webkitfullscreenchange', _fullscreenHandler);
+      document.removeEventListener('mozfullscreenchange', _fullscreenHandler);
+      document.removeEventListener('fullscreenchange', _fullscreenHandler);
     });
 
   };
 
 });
 
-angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (GMService, $location, gvConstants) {
+angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (GMService, 
+  $location, gvConstants, gettextCatalog) {
   return {
     restrict: 'A',
-    template: '<div id="genome-viewer" style="border:1px solid #d3d3d3;border-top-width: 0px;"></div>',
+    template: '<div id="genome-viewer" style="border:1px solid #d3d3d3;border-left:none;border-top-width: 0px;"></div>',
     replace: true,
     controller: 'GenomeViewerController',
     link: function (scope, element, attrs, GenomeViewerController) {
-
+      require.ensure([], require => {
+        require('~/scripts/genome-viewer.js');
       console.log(GenomeViewerController);
       var genomeViewer, navigationBar, tracks = {};
       var availableSpecies;
         var regionObj = new Region({chromosome: 1, start: 1, end: 1}),
-        done = false;
-
-
+        done = false; 
 
       function setup() {
-        regionObj.start = parseInt(regionObj.start);
-        regionObj.end = parseInt(regionObj.end);
+        regionObj.start = parseInt(regionObj.start, 10);
+        regionObj.end = parseInt(regionObj.end, 10);
         var species = availableSpecies.vertebrates[0];
         genomeViewer = genomeViewer || new GenomeViewer({
             cellBaseHost: GMService.getConfiguration().cellBaseHost,
@@ -209,11 +209,6 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
             'region:move': function (event) {
               genomeViewer._regionMoveHandler(event);
             },
-            /*'restoreDefaultRegion:click': function (event) {
-              Utils.setMinRegion(genomeViewer.defaultRegion, genomeViewer.getSVGCanvasWidth());
-              event.region = genomeViewer.defaultRegion;
-              genomeViewer.trigger('region:change', event);
-            }*/
           }
         });
         genomeViewer.on('region:change', function (event) {
@@ -296,7 +291,6 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
             }
           }),
           dataAdapter: new IcgcGeneAdapter({
-            //multiRegions: true,
             resource: 'gene',
             chromosomeLimitMap: gvConstants.CHROMOSOME_LIMIT_MAP,
             multiRegions: true,
@@ -321,19 +315,25 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
             return f.id;
           },
           tooltipTitle: function (f) {
-              return '<span class="gmtitle">ICGC mutation' + ' - ' + f.id + '</span>';
+              return '<span class="gmtitle">' + gettextCatalog.getString('ICGC mutation') + ' - ' + f.id + '</span>';
           },
           tooltipText: function (f) {
             var consequences = GMService.tooltipConsequences(f.consequences), fi;
             fi = (f.functionalImpact && _.contains(f.functionalImpact, 'High')) ? 'High' : 'Low';
-            return '<span class="gmkeys">mutation:&nbsp;</span>' + f.mutation + '<br>' +
-              '<span class="gmkeys">reference allele:&nbsp;</span>' + f.refGenAllele + '<br>' +
-              '<span class="gmkeys">mutation type:&nbsp;</span>' + f.mutationType + '<br>' +
-              '<span class="gmkeys">project info:</span><br>' + f.projectInfo.join('<br>') + '<br>' +
-              '<span class="gmkeys">consequences:<br></span>' + consequences + '<br>' +
-              '<span class="gmkeys">source:&nbsp;</span>ICGC<br>' +
-              '<span class="gmkeys">start-end:&nbsp;</span>' + f.start + '-' + f.end + '<br>' +
-              '<span class="gmkeys">functional impact:&nbsp;</span>' + fi;
+            return '<span class="gmkeys">' + gettextCatalog.getString('mutation') + ':&nbsp;</span>' + 
+            f.mutation + '<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('reference allele') + ':&nbsp;</span>' + 
+              f.refGenAllele + '<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('mutation type') + ':&nbsp;</span>' + 
+              f.mutationType + '<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('project info') + ':</span><br>' + 
+              f.projectInfo.join('<br>') + '<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('consequences') + ':<br></span>' + 
+              consequences + '<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('source') + ':&nbsp;</span>ICGC<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('start-end') + ':&nbsp;</span>' + 
+              f.start + '-' + f.end + '<br>' +
+              '<span class="gmkeys">' + gettextCatalog.getString('functional impact') + ':&nbsp;</span>' + fi;
           },
           color: function (feat) {
             switch (feat.mutationType) {
@@ -375,19 +375,14 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
         /** End add tracks **/
 
         genomeViewer.draw();
-        //genomeViewer.enableAutoHeight();
 
         genomeViewer.karyotypePanel.hide();
         genomeViewer.chromosomePanel.hide();
         GenomeViewerController.initFullScreenHandler(genomeViewer);
       }
 
-      scope.$watch('[genes, mutations, tab]', function (params) {
-        var genes, mutations, tab;
-
-        genes = params[0];
-        mutations = params[1];
-        tab = params[2];
+      function update() {
+        var {genes, mutations, tab} = scope;
 
         if (!done) {
           if (tab === 'genes' &&
@@ -400,10 +395,10 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
             if (! availableSpecies) {
               GenomeViewerController.getSpecies(function (s) {
                 availableSpecies = s;
-                setup(regionObj);
+                setup();
               });
             } else {
-              setup(regionObj);
+              setup();
             }
           }
           else if (tab === 'mutations' &&
@@ -421,15 +416,16 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
             if (! availableSpecies) {
               GenomeViewerController.getSpecies(function (s) {
                 availableSpecies = s;
-                setup(regionObj);
+                setup();
               });
             } else {
-              setup(regionObj);
+              setup();
             }
           }
 
         }
-      }, true);
+      }
+      scope.$watch('[genes, mutations, tab]', update, true);
 
       scope.$on('gv:set:region', function (e, params) {
         if (genomeViewer) {
@@ -455,12 +451,16 @@ angular.module('icgc.modules.genomeviewer').directive('genomeViewer', function (
           genomeViewer.destroy();
         }
       });
+
+      update();
+      });
+
     }
   };
 });
 
 angular.module('icgc.modules.genomeviewer').directive('gvembed', function (GMService, $location,
-  LocationService, gvConstants) {
+  LocationService, gvConstants, gettextCatalog) {
   return {
     restrict: 'E',
     replace: true,
@@ -471,10 +471,11 @@ angular.module('icgc.modules.genomeviewer').directive('gvembed', function (GMSer
     link: function (scope, element, attrs, GenomeViewerController) {
       var genomeViewer, navigationBar, tracks = {};
       var availableSpecies;
-
+      require.ensure([], require => {
+        require('~/scripts/genome-viewer.js');
       function setup(regionObj) {
-        regionObj.start = parseInt(regionObj.start);
-        regionObj.end = parseInt(regionObj.end);
+        regionObj.start = parseInt(regionObj.start, 10);
+        regionObj.end = parseInt(regionObj.end, 10);
         var species = availableSpecies.vertebrates[0];
         genomeViewer = genomeViewer || new GenomeViewer({
             cellBaseHost: GMService.getConfiguration().cellBaseHost,
@@ -509,8 +510,8 @@ angular.module('icgc.modules.genomeviewer').directive('gvembed', function (GMSer
               collapsed: false,
               collapsible: false
             },
-            version: 'Powered by ' +
-            '<a target="_blank" href="http://www.genomemaps.org/">Genome Maps</a>'
+            version: gettextCatalog.getString('Powered by' +
+              ' <a target="_blank" href="http://www.genomemaps.org/">Genome Maps</a>')
           });
         window.gv = genomeViewer;
 
@@ -671,20 +672,26 @@ angular.module('icgc.modules.genomeviewer').directive('gvembed', function (GMSer
               return f.id;
             },
             tooltipTitle: function (f) {
-              return '<span class="gmtitle">ICGC mutation' + ' - ' + f.id + '</span>';
+              return '<span class="gmtitle">' + gettextCatalog.getString('ICGC mutation') + ' - ' + f.id + '</span>';
             },
             tooltipText: function (f) {
               var consequences = GMService.tooltipConsequences(f.consequences), fi;
               fi = (f.functionalImpact && _.contains(f.functionalImpact, 'High')) ? 'High' : 'Low';
 
-              return '<span class="gmkeys">mutation:&nbsp;</span>' + f.mutation + '<br>' +
-                     '<span class="gmkeys">reference allele:&nbsp;</span>' + f.refGenAllele + '<br>' +
-                     '<span class="gmkeys">mutation type:&nbsp;</span>' + f.mutationType + '<br>' +
-                     '<span class="gmkeys">project info:</span><br>' + f.projectInfo.join('<br>') + '<br>' +
-                     '<span class="gmkeys">consequences:<br></span>' + consequences + '<br>' +
-                     '<span class="gmkeys">source:&nbsp;</span>ICGC<br>' +
-                     '<span class="gmkeys">start-end:&nbsp;</span>' + f.start + '-' + f.end + '<br>' +
-                     '<span class="gmkeys">functional impact:&nbsp;</span>' + fi;
+              return '<span class="gmkeys">' + gettextCatalog.getString('mutation:') + '&nbsp;</span>' + 
+                f.mutation + '<br>' +
+                '<span class="gmkeys">' + gettextCatalog.getString('reference allele:') + '&nbsp;</span>' + 
+                f.refGenAllele + '<br>' +
+                '<span class="gmkeys">' + gettextCatalog.getString('mutation type:') + '&nbsp;</span>' + 
+                f.mutationType + '<br>'+
+                '<span class="gmkeys">' + gettextCatalog.getString('project info:') + '</span><br>' + 
+                f.projectInfo.join('<br>')+ '<br>' +
+                '<span class="gmkeys">' + gettextCatalog.getString('consequences:') + '<br></span>' + 
+                consequences + '<br>' +
+                '<span class="gmkeys">' + gettextCatalog.getString('source:') + '&nbsp;</span>ICGC<br>' +
+                '<span class="gmkeys">' + gettextCatalog.getString('start-end:') + '&nbsp;</span>' + 
+                f.start + '-' + f.end + '<br>' +
+                '<span class="gmkeys">' + gettextCatalog.getString('functional impact:') + '&nbsp;</span>' + fi;
             },
             color: function (feat) {
               switch (feat.mutationType) {
@@ -768,7 +775,8 @@ angular.module('icgc.modules.genomeviewer').directive('gvembed', function (GMSer
         });
       }
 
-      attrs.$observe('region', function (region) {
+      function update() {
+        var region = attrs.region;
         if (!region) {
           return;
         }
@@ -793,7 +801,13 @@ angular.module('icgc.modules.genomeviewer').directive('gvembed', function (GMSer
         } else {
           setup(regionObj);
         }
+      }
+
+      attrs.$observe('region', update);
+      update();
+
       });
+      
     }
   };
 });

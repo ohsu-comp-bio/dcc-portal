@@ -31,7 +31,7 @@
 
   var module = angular.module('icgc.repository.services', []);
 
-  module.service ('ExternalRepoService', function ($window, $q, Restangular, API, HighchartsService) {
+  module.service ('ExternalRepoService', function ($window, $q, Restangular, API, HighchartsService, RepositoryService) {
 
     // Initial values until the call to getRepoMap() returns.
     var _srv = this,
@@ -100,7 +100,12 @@
         .customPOST(params, undefined, undefined, {'Content-Type': 'application/json'});
     };
 
-    _srv.getList = function (params) {
+    const hydrateFileCopies = (copies, repoCodeMap) => copies.map(copy => ({
+      ...copy,
+      repo: repoCodeMap[copy.repoCode],
+    }));
+
+    _srv.getList = async function (params) {
       var defaults = {
         size: 10,
         from:1
@@ -124,7 +129,7 @@
           'TCGA DCC - Bethesda'
       ];
 
-      return Restangular.one (REPO_API_PATH).get (angular.extend (defaults, params)).then(function (data) {
+      const filesRequest = Restangular.one(REPO_API_PATH).get(angular.extend (defaults, params)).then((data) => {
         if (data.termFacets.hasOwnProperty('repoName') && data.termFacets.repoName.hasOwnProperty('terms')) {
           data.termFacets.repoName.terms = data.termFacets.repoName.terms.sort(function (a, b) {
             return precedence.indexOf(a.term) - precedence.indexOf(b.term);
@@ -133,6 +138,19 @@
 
         return data;
       });
+
+      const [filesResponse, repoCodeMap] = [
+        await filesRequest,
+        await RepositoryService.getRepoCodeMap(),
+      ];
+
+      return {
+        ...filesResponse,
+        hits: filesResponse.hits.map(hit => ({
+          ...hit,
+          fileCopies: hydrateFileCopies(hit.fileCopies, repoCodeMap),
+        }))
+      };
     };
 
     _srv.getRelevantRepos = function (filters) {
@@ -192,8 +210,8 @@
       return API.BASE_URL + '/manifests?' + query;
     };
 
-    _srv.downloadSelected = function (ids, repos) {
-      $window.location.href = _srv.getManifestUrlByFileIds(ids, repos);
+    _srv.downloadSelected = function (ids, repos, unique) {
+      $window.location.href = _srv.getManifestUrlByFileIds(ids, repos, unique);
     };
 
     _srv.export = function (filters) {
@@ -216,11 +234,12 @@
       return Restangular.service('manifests').post(jQuery.param(data));
     };
 
-    _srv.getManifestUrlByFileIds = function (ids, repos) {
+    _srv.getManifestUrlByFileIds = function (ids, repos, unique) {
       return _srv.getRepoManifestUrl({
         filters: {file:{id:{is:ids}}},
         repoCodes: _concatRepoCodes (repos),
-        format: 'files'
+        format: 'tarball',
+        unique: unique
       });
     };
 
@@ -228,13 +247,19 @@
       return Restangular.one (REPO_API_PATH).one('metadata').get ({});
     };
 
-    _srv.getFileInfo = function (id) {
-      return Restangular.one (REPO_API_PATH, id).get();
+    _srv.getFileInfo = async function (id) {
+      const [fileInfo, repoCodeMap] = [
+        await Restangular.one(REPO_API_PATH, id).get().then(x => x.plain()),
+        await RepositoryService.getRepoCodeMap(),
+      ];
+      return {
+        ...fileInfo,
+        fileCopies: hydrateFileCopies(fileInfo.fileCopies, repoCodeMap),
+      };
     };
 
     function _shortenRepoName (name) {
       return name;
-      // return name.slice(0, 5);
     }
 
     _srv.createFacetCharts = function (facets) {
@@ -257,7 +282,8 @@
         primarySite: _createFacetPieChart(facets, 'primarySite'),
         dataType: _createFacetPieChart(facets, 'dataType'),
         software: _createFacetPieChart(facets, 'software'),
-        experimentalStrategy: _createFacetPieChart(facets, 'experimentalStrategy')
+        experimentalStrategy: _createFacetPieChart(facets, 'experimentalStrategy'),
+        fileFormat: _createFacetPieChart(facets, 'fileFormat')
       };
     };
 
@@ -268,11 +294,20 @@
   });
 
 
-  module.service('RepositoryService', function ($filter, RestangularNoCache) {
+  module.service('FileService', function ($filter, RestangularNoCache) {
 
     this.folder = function (path) {
       return RestangularNoCache.one('download/info' + path)
               .get();
+    };
+
+    this.getAllFiles = () => {
+      return RestangularNoCache.one('download/info')
+        .get({
+          fields: 'name,type',
+          recursive: true,
+          flatten: true,
+        });
     };
 
     this.getStatus = function () {

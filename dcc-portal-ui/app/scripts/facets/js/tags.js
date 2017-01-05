@@ -15,6 +15,8 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import deepmerge from 'deepmerge';
+
 (function () {
   'use strict';
 
@@ -22,20 +24,33 @@
 
   module.controller('tagsFacetCtrl',
     function ($scope, $modal, Facets, FilterService, LocationService, HighchartsService, FiltersUtil,
-      Extensions, GeneSets, Genes, GeneSetNameLookupService, SetService, GeneSymbols) {
+      Extensions, GeneSets, Genes, GeneSetNameLookupService, SetService, GeneSymbols, CompoundsService, Page) {
 
     $scope.Extensions = Extensions;
+    $scope.isInRepositoryFile = Page.page() === 'repository';
 
     var _fetchNameForSelections = function ( selections ) {
 
       if ( selections ) {
         [ 'goTermId', 'pathwayId' ].forEach ( function (s) {
-          if ( selections [s] ) {
+          if ( selections[s] ) {
             GeneSetNameLookupService.batchFetch ( selections[ s ].is );
           }
         });
       }
     };
+
+    $scope.uploadEntityFn = () => {
+      if($scope.type === 'donor' || $scope.type === 'file-donor'){
+        return $scope.uploadDonorSet();
+      }
+      if($scope.type === 'gene'){
+        return $scope.uploadGeneSet();
+      }
+      if($scope.type === 'mutation' || $scope.type === 'file'){
+        return $scope.uploadEntitySet();
+      }
+    }
 
     // This function is called by tags.html to prevent the File input box in
     // External Repo File page from displaying the "Uploaded donor set" label.
@@ -102,7 +117,17 @@
       return other.concat(fileDonor);
     }
 
+    function resolveActiveCompoundNames(activeCompoundIds) {
+      $scope.compoundIdToNameMap = {};
+      _.forEach(activeCompoundIds, function (compoundId) {
+        CompoundsService.getCompoundByZincId(compoundId).then(function(compound) {
+          $scope.compoundIdToNameMap[compoundId] = compound.name;
+        });
+      });
+    }
+
     function setup() {
+      /*jshint maxcomplexity:false */
       var type = $scope.proxyType || $scope.type,
           facet = $scope.proxyFacetName || $scope.facetName,
           filters = FilterService.filters(),
@@ -115,19 +140,19 @@
         type: type,
         facet: facet
       });
-      
+
       setActiveClass();
 
       // There are only 'active' entity ids
       $scope.activeEntityIds = activeEntityHelper(type);
-
+      
       // Fetch display names for entity lists
       $scope.entityIdMap = {};
 
       // Find any entity set ids among the entity ids in order to query for their names
       var setIds = _($scope.activeEntityIds)
-        .filter(function(id) { return id.indexOf(Extensions.ENTITY_PREFIX) === 0;})
-        .map(function(id) { return id.replace('ES:', '');})
+        .filter(function(id) { return id.indexOf(Extensions.ENTITY_PREFIX) === 0})
+        .map(function(id) { return id.replace('ES:', '')})
         .value();
 
       if (setIds.length > 0) {
@@ -178,6 +203,39 @@
             $scope.pathwayIdCounts = result;
           });
         }
+      } else if ($scope.type === 'compound' && asContext) {
+        activeIds = $scope.actives;
+        resolveActiveCompoundNames(activeIds);
+        
+        if (filters.hasOwnProperty('gene') && filters.gene.hasOwnProperty('hasCompound')) {
+          $scope.hasCompoundTypePredicate = true;
+        } else {
+          $scope.hasCompoundTypePredicate = false;
+        }
+
+        var compoundTypeFilters = {};
+        if (filters.hasOwnProperty('gene') && filters.gene.hasOwnProperty('compoundId')) {
+          compoundTypeFilters = FilterService.filters();
+        } else {
+          compoundTypeFilters = FilterService.mergeIntoFilters({'gene':{'hasCompound':true}});
+        }
+        Genes.handler.one('count').get({filters:compoundTypeFilters}).then(function (result) {
+          $scope.allCompoundCounts = result || 0;
+        });
+
+        if (activeIds && activeIds.length > 0) {
+          $scope.compoundIdCounts = {};
+          _.forEach(activeIds, function(activeId) {
+            var activeIdFilter = FilterService.filters();
+            delete activeIdFilter.gene.hasCompound;
+            delete activeIdFilter.gene.compoundId;
+            _.merge(activeIdFilter, {'gene':{'compoundId':{'is': [activeId]}}});
+
+            Genes.handler.one('count').get({filters:activeIdFilter}).then(function (result) {
+              $scope.compoundIdCounts[activeId] = result || 0; 
+            });
+          });
+        }
       } else if ($scope.type === 'curated_set' && asContext) {
         $scope.predefinedCurated = _.filter(Extensions.GENE_SET_ROOTS, function(set) {
           return set.type === 'curated_set';
@@ -225,7 +283,7 @@
     };
 
     var _captureTermInfo = function ( term ) {
-      if ( ! term ) { return; }
+      if ( ! term ) { return }
 
       var _type = term.type;
       var _id = term.id;
@@ -336,23 +394,53 @@
 
 
     /* Add a gene set term to the search filters */
-    $scope.addGeneSet = function() {
+    $scope.uploadGeneSet = () => {
       $modal.open({
         templateUrl: '/scripts/genelist/views/upload.html',
         controller: 'GeneListController'
       });
     };
 
-    $scope.uploadDonorSet = function() {
+    $scope.uploadDonorSet = () => {
       $modal.open({
         templateUrl: '/scripts/donorlist/views/upload.html',
         controller: 'DonorListController'
       });
     };
 
+     $scope.uploadEntitySet = () => {
+      $modal.open({
+        templateUrl: '/scripts/entitysetupload/views/upload.html',
+        controller: 'EntitySetUploadController',
+        resolve: {
+          entityType: () => {
+            return $scope.type;
+          }
+        }
+      });
+    };
+
+    $scope.selectSet = (set) => {
+      let term = {};
+      if(!set.selected){
+        if($scope.isInRepositoryFile && $scope.type === 'file-donor') {
+          term.id = _.head(set.repoFilters.file.donorId.is);
+        } else{
+          term.id = _.head(set.advFilters[$scope.type].id.is);
+        }
+        
+        term.type = $scope.type;
+        term.name = set.name;
+        $scope.addTerm(term);
+        event.stopPropagation();
+      } else if(set.selected) {
+        $scope.removeTerm(`ES:${set.id}`);
+        event.stopPropagation();
+      }
+    }
+
     // Needed if term removed from outside scope
     $scope.$on(FilterService.constants.FILTER_EVENTS.FILTER_UPDATE_EVENT, setup);
-
 
     setup();
   });
@@ -366,9 +454,10 @@
         type: '@',
         example: '@',
         placeholder: '@',
-
+        entitySets: '=',
         proxyType: '@',
-        proxyFacetName: '@'
+        proxyFacetName: '@',
+        showEntitySetFacet: '@'
       },
       templateUrl: function (elem, attr) {
         var path_ = function (s) {
@@ -385,16 +474,10 @@
         if (type === 'curated_set') {
           return path_ ('curatedtags');
         }
-
-        var facetName = attr.facetName;
-
-        if (type === 'gene' && facetName === 'id') {
-          return path_ ('genetags');
+        if (type === 'compound') {
+          return path_ ('compoundtags');
         }
-        if (_.contains (['donor', 'file-donor'], type) && facetName === 'id') {
-          return path_ ('donorfacet');
-        }
-
+        
         return path_ ('tags');
       },
       controller: 'tagsFacetCtrl'
