@@ -59,6 +59,10 @@ module.exports = {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
+            {
+              search: '\<branding-settings\>\<\/branding-settings\>',
+              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>`
+            }
           ]
         }
       },
