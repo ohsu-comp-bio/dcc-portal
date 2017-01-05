@@ -62,8 +62,7 @@ module.exports = {
             },
             {
               search: '\<branding-settings\>\<\/branding-settings\>',
-              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>`
-//              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./CUSTOM_BRANDING.js'))}</script>`
+              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>``
             }
           ]
         }
