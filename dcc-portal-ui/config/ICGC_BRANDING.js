@@ -1,10 +1,10 @@
 /* eslint-disable quotes */
 
 module.exports = {
-    "footerCaption": "InTeRnAtIoNaL CaNcEr GeNoMe CoNsOrTiUm.",
+    "footerCaption": "International Cancer Genome Consortium.",
     "footerCaptionHref": "https://icgc.org",
     "footerLogoImgSrc": "/styles/images/OICR2logo.png",
     "footerLogoImgHref": "http://oicr.on.ca/",
-    "headerCaption": "iCgC",
+    "headerCaption": "ICGC",
     "headerLogoImgSrc": "/styles/images/icgc-logo.png"
 };
