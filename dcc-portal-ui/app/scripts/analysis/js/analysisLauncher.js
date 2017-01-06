@@ -28,7 +28,7 @@
    * - phenotype analysis
    */
   module.controller('NewAnalysisController',
-    function($scope, $modal, $location, $timeout, Page, AnalysisService, Restangular, SetService, Extensions, $q, $window gettextCatalog) {
+    function($scope, $modal, $location, $timeout, Page, AnalysisService, Restangular, SetService, Extensions, $q, $window, gettextCatalog) {
 
     var _this = this,
         _isLaunchingAnalysis = false;
