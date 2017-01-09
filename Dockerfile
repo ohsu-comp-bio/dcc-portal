@@ -16,6 +16,7 @@ RUN npm install
 
 EXPOSE 8000 9000
 
+ENV API_SOURCE http://10.96.11.96:8000
 ENV PORT 8000
 
 RUN apt-get update
