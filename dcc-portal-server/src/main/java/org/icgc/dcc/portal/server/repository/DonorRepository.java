@@ -20,15 +20,12 @@ package org.icgc.dcc.portal.server.repository;
 import static com.google.common.base.Functions.constant;
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;
-import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.base.Strings.isNullOrEmpty;
-import static com.google.common.collect.Iterables.transform;
 import static com.google.common.collect.Lists.transform;
 import static com.google.common.collect.Maps.toMap;
 import static com.google.common.collect.Sets.newHashSet;
 import static com.google.common.collect.Sets.newHashSetWithExpectedSize;
 import static java.util.Collections.singletonMap;
-import static lombok.AccessLevel.PRIVATE;
 import static org.dcc.portal.pql.ast.function.FunctionBuilders.facets;
 import static org.dcc.portal.pql.meta.Type.DONOR_CENTRIC;
 import static org.dcc.portal.pql.query.PqlParser.parse;
@@ -44,9 +41,14 @@ import static org.elasticsearch.index.query.QueryBuilders.termsQuery;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.missing;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.stats;
 import static org.elasticsearch.search.aggregations.AggregationBuilders.terms;
+import static org.elasticsearch.search.sort.SortOrder.ASC;
+import static org.icgc.dcc.common.core.util.stream.Collectors.toImmutableList;
 import static org.icgc.dcc.portal.server.model.IndexModel.FIELDS_MAPPING;
 import static org.icgc.dcc.portal.server.model.IndexModel.MAX_FACET_TERM_COUNT;
 import static org.icgc.dcc.portal.server.model.IndexModel.getFields;
+import static org.icgc.dcc.portal.server.model.IndexType.DONOR;
+import static org.icgc.dcc.portal.server.model.IndexType.DONOR_TEXT;
+import static org.icgc.dcc.portal.server.model.IndexType.FILE_DONOR_TEXT;
 import static org.icgc.dcc.portal.server.model.SearchFieldMapper.searchFieldMapper;
 import static org.icgc.dcc.portal.server.repository.TermsLookupRepository.createTermsLookupFilter;
 import static org.icgc.dcc.portal.server.util.ElasticsearchRequestUtils.isRepositoryDonor;
@@ -56,7 +58,6 @@ import static org.icgc.dcc.portal.server.util.ElasticsearchResponseUtils.createR
 import static org.icgc.dcc.portal.server.util.SearchResponses.hasHits;
 
 import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +65,6 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.dcc.portal.pql.ast.StatementNode;
 import org.dcc.portal.pql.query.QueryEngine;
@@ -72,33 +72,32 @@ import org.elasticsearch.action.search.MultiSearchRequestBuilder;
 import org.elasticsearch.action.search.MultiSearchResponse;
 import org.elasticsearch.action.search.SearchRequestBuilder;
 import org.elasticsearch.action.search.SearchResponse;
+import org.elasticsearch.action.search.SearchType;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.common.unit.TimeValue;
+import org.elasticsearch.index.query.BoolFilterBuilder;
 import org.elasticsearch.index.query.FilterBuilder;
 import org.elasticsearch.index.query.FilterBuilders;
 import org.elasticsearch.index.query.NestedQueryBuilder;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.aggregations.Aggregation;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import org.elasticsearch.search.aggregations.bucket.terms.Terms.Bucket;
 import org.elasticsearch.search.aggregations.bucket.terms.TermsBuilder;
 import org.elasticsearch.search.aggregations.metrics.stats.Stats;
 import org.icgc.dcc.portal.server.model.EntitySetTermFacet;
-import org.icgc.dcc.portal.server.model.IndexModel;
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
-import org.icgc.dcc.portal.server.model.IndexModel.Type;
-import org.icgc.dcc.portal.server.model.PhenotypeResult;
+import org.icgc.dcc.portal.server.model.EntityType;
+import org.icgc.dcc.portal.server.model.IndexType;
 import org.icgc.dcc.portal.server.model.Query;
 import org.icgc.dcc.portal.server.model.Statistics;
 import org.icgc.dcc.portal.server.model.TermFacet.Term;
 import org.icgc.dcc.portal.server.pql.convert.Jql2PqlConverter;
 import org.icgc.dcc.portal.server.repository.TermsLookupRepository.TermLookupType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Maps;
 
 import lombok.Getter;
@@ -109,12 +108,6 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 public class DonorRepository implements Repository {
-
-  private static final Type TYPE = Type.DONOR;
-  private static final Kind KIND = Kind.DONOR;
-
-  @NonNull
-  private final EntitySetRepository entitySetRepository;
 
   // These are the raw field names from the 'donor-text' type in the main index.
   public static final Map<String, String> DONOR_ID_SEARCH_FIELDS = transformToTextSearchFieldMap(
@@ -145,7 +138,7 @@ public class DonorRepository implements Repository {
    * analyses. Set the value to EMPTY_PAIR to indicate no stats is needed for the main facet. *NOTE: Categorical terms
    * such as gender or vitalStatus can't have stats facets and, if you do that, your elasticsearch query will fail.
    */
-  private static final ImmutableMap<String, Optional<SimpleImmutableEntry<String, String>>> FACETS_FOR_PHENOTYPE =
+  public static final ImmutableMap<String, Optional<SimpleImmutableEntry<String, String>>> FACETS_FOR_PHENOTYPE =
       ImmutableMap.of(
           PhenotypeFacetNames.GENDER, EMPTY_PAIR,
           PhenotypeFacetNames.VITAL_STATUS, EMPTY_PAIR,
@@ -159,7 +152,7 @@ public class DonorRepository implements Repository {
           PhenotypeFacetNames.GENDER, "donor_sex",
           PhenotypeFacetNames.VITAL_STATUS, "donor_vital_status");
 
-  @Getter(lazy = true, value = PRIVATE)
+  @Getter(lazy = true)
   private final Map<String, Map<String, Integer>> baselineTermsAggsOfPhenotype = loadBaselineTermsAggsOfPhenotype();
 
   private static final int SCAN_BATCH_SIZE = 1000;
@@ -168,18 +161,17 @@ public class DonorRepository implements Repository {
   private static final TimeValue KEEP_ALIVE = new TimeValue(10000);
 
   private final Client client;
-  private final String index;
+  private final String indexName;
   private final String repoIndexName;
   private final QueryEngine queryEngine;
 
   @Autowired
-  DonorRepository(Client client, IndexModel indexModel, QueryEngine queryEngine,
-      EntitySetRepository entitySetRepository) {
-    this.index = indexModel.getIndex();
-    this.repoIndexName = indexModel.getRepoIndex();
+  public DonorRepository(Client client, QueryEngine queryEngine,
+      @Value("#{indexName}") String indexName, @Value("#{repoIndexName}") String repoIndexName) {
+    this.indexName = indexName;
+    this.repoIndexName = repoIndexName;
     this.client = client;
     this.queryEngine = queryEngine;
-    this.entitySetRepository = entitySetRepository;
   }
 
   @Override
@@ -197,8 +189,10 @@ public class DonorRepository implements Repository {
   @NonNull
   public SearchResponse findAllCentric(StatementNode pqlAst) {
     val request = queryEngine.execute(pqlAst, DONOR_CENTRIC);
+    log.trace("{}", request.getRequestBuilder());
     val response = request.getRequestBuilder().execute().actionGet();
 
+    log.trace("{}", response);
     return response;
   }
 
@@ -226,66 +220,34 @@ public class DonorRepository implements Repository {
     return response;
   }
 
-  public List<PhenotypeResult> getPhenotypeAnalysisResult(@NonNull final Collection<UUID> entitySetIds) {
-    // Here we eliminate duplicates and impose ordering (needed for reading the response items).
-    val setIds = ImmutableSet.copyOf(entitySetIds).asList();
+  public MultiSearchResponse calculatePhenotypeStats(@NonNull final List<UUID> setIds) {
+    val multiSearch = client.prepareMultiSearch();
+    val matchAll = matchAllQuery();
 
-    val multiResponse = performPhenotypeAnalysisMultiSearch(setIds);
-    val responseItems = multiResponse.getResponses();
-    val responseItemCount = responseItems.length;
-    checkState(responseItemCount == setIds.size(),
-        "The number of queries does not match the number of responses in a multi-search.");
+    for (val setId : setIds) {
+      val search = getPhenotypeAnalysisSearchBuilder();
+      search.setQuery(filteredQuery(matchAll, getDonorSetIdFilterBuilder(setId)));
 
-    val facetKeyValuePairs = FACETS_FOR_PHENOTYPE.entrySet();
+      // Adding terms_stats facets
+      FACETS_FOR_PHENOTYPE.values().stream()
+          .filter(v -> wantsStatistics(v))
+          .map(Optional::get)
+          .forEach(statsFacetNameFieldPair -> {
+            final String actualFieldName = DONORS_FIELDS_MAPPING_FOR_PHENOTYPE.get(statsFacetNameFieldPair.getValue());
+            search.addAggregation(buildTermsStatsAggsBuilder(statsFacetNameFieldPair.getKey(), actualFieldName));
+          });
 
-    // Building a map with facet name as the key and a list builder as the value.
-    val results = facetKeyValuePairs.stream().collect(
-        Collectors.toMap(entry -> entry.getKey(), notUsed -> new ImmutableList.Builder<EntitySetTermFacet>()));
-
-    // Here we enumerate the response collection by entity-set UUIDs (the same grouping as in the multi-search).
-    for (int i = 0; i < responseItemCount; i++) {
-      val aggregations = responseItems[i].getResponse().getAggregations();
-
-      if (null == aggregations) continue;
-
-      val aggsMap = aggregations.asMap();
-      val entitySetId = setIds.get(i);
-
-      val entitySetCount = entitySetRepository.find(entitySetId).getCount();
-
-      // We go through the main Results map for each facet and build the inner list by populating it with instances of
-      // EntitySetTermFacet.
-      for (val facetKv : facetKeyValuePairs) {
-        val facetName = facetKv.getKey();
-        Aggregation aggs = aggsMap.get(facetName);
-
-        Long total = 0L;
-        Long missing = 0L;
-        // We want to include the number of missing donor documents in our final missing count
-        if (aggs instanceof Terms) {
-          val termsAggs = (Terms) aggs;
-
-          total = termsAggs.getBuckets()
-              .stream()
-              .mapToLong(Bucket::getDocCount)
-              .sum();
-
-          missing = entitySetCount - total;
-        }
-
-        results.get(facetName).add(
-            buildEntitySetTermAggs(entitySetId, (Terms) aggs, aggsMap, total, missing, facetKv.getValue()));
-      }
-
+      log.debug("Sub-search for DonorSet ID [{}] is: '{}'", setId, search);
+      multiSearch.add(search);
     }
 
-    val finalResult = transform(results.entrySet(),
-        entry -> new PhenotypeResult(entry.getKey(), entry.getValue().build()));
+    val multiResponse = multiSearch.execute().actionGet();
+    log.debug("MultiResponse is: '{}'.", multiResponse);
 
-    return ImmutableList.copyOf(finalResult);
+    return multiResponse;
   }
 
-  private EntitySetTermFacet buildEntitySetTermAggs(final UUID entitySetId, final Terms termsFacet,
+  public EntitySetTermFacet buildEntitySetTermAggs(final UUID entitySetId, final Terms termsFacet,
       final Map<String, Aggregation> aggsMap,
       final Long total,
       final Long missing,
@@ -348,8 +310,9 @@ public class DonorRepository implements Repository {
       results.putAll(difference);
     }
 
-    val termFacetList = transform(results.build().entrySet(),
-        entry -> new Term(entry.getKey(), (long) entry.getValue()));
+    val termFacetList = results.build().entrySet().stream()
+        .map(entry -> new Term(entry.getKey(), (long) entry.getValue()))
+        .collect(toImmutableList());
 
     return ImmutableList.copyOf(termFacetList);
   }
@@ -369,43 +332,16 @@ public class DonorRepository implements Repository {
 
   }
 
-  private MultiSearchResponse performPhenotypeAnalysisMultiSearch(@NonNull final List<UUID> setIds) {
-    val multiSearch = client.prepareMultiSearch();
-    val matchAll = matchAllQuery();
-
-    for (val setId : setIds) {
-      val search = getPhenotypeAnalysisSearchBuilder();
-      search.setQuery(filteredQuery(matchAll, getDonorSetIdFilterBuilder(setId)));
-
-      // Adding terms_stats facets
-      FACETS_FOR_PHENOTYPE.values().stream()
-          .filter(v -> wantsStatistics(v))
-          .map(Optional::get)
-          .forEach(statsFacetNameFieldPair -> {
-            final String actualFieldName = DONORS_FIELDS_MAPPING_FOR_PHENOTYPE.get(statsFacetNameFieldPair.getValue());
-            search.addAggregation(buildTermsStatsAggsBuilder(statsFacetNameFieldPair.getKey(), actualFieldName));
-          });
-
-      log.debug("Sub-search for DonorSet ID [{}] is: '{}'", setId, search);
-      multiSearch.add(search);
-    }
-
-    val multiResponse = multiSearch.execute().actionGet();
-    log.debug("MultiResponse is: '{}'.", multiResponse);
-
-    return multiResponse;
-  }
-
   private static TermsBuilder buildTermsStatsAggsBuilder(final String aggName, final String aggField) {
     return terms(aggName).field("_type").size(MAX_FACET_TERM_COUNT)
         .subAggregation(stats("stats").field(aggField));
   }
 
   private SearchRequestBuilder getPhenotypeAnalysisSearchBuilder() {
-    val type = Type.DONOR_CENTRIC;
+    val type = IndexType.DONOR_CENTRIC;
     val fieldMap = DONORS_FIELDS_MAPPING_FOR_PHENOTYPE;
 
-    val searchBuilder = client.prepareSearch(index)
+    val searchBuilder = client.prepareSearch(indexName)
         .setTypes(type.getId())
         .setSearchType(QUERY_THEN_FETCH)
         .setFrom(0)
@@ -446,7 +382,7 @@ public class DonorRepository implements Repository {
   }
 
   @Override
-  public SearchRequestBuilder buildFindAllRequest(Query query, Type type) {
+  public SearchRequestBuilder buildFindAllRequest(Query query, IndexType type) {
     throw new UnsupportedOperationException("No longer applicable");
   }
 
@@ -471,6 +407,47 @@ public class DonorRepository implements Repository {
       search.add(request.getRequestBuilder());
     }
     return search.execute().actionGet();
+  }
+
+  public SearchResponse donorSearchRequest(final BoolFilterBuilder boolFilter, int maxUnionCount) {
+    val query = filteredQuery(matchAllQuery(), boolFilter);
+    val request = client.prepareSearch(repoIndexName, indexName)
+        .setTypes(DONOR_TEXT.getId(), FILE_DONOR_TEXT.getId())
+        .setQuery(query)
+        .setSize(maxUnionCount)
+        .setNoFields()
+        .setSearchType(SearchType.DEFAULT);
+
+    log.debug("Terms Lookup - Donor Search: {}", request);
+    val response = request.execute().actionGet();
+    log.debug("ElasticSearch result is: '{}'", response);
+    return response;
+  }
+
+  /**
+   * Special case for Survival Analysis, the fields selected for return are the only ones we currently care about.
+   */
+  public SearchResponse singleDonorUnion(final String indexTypeName,
+      @NonNull final SearchType searchType,
+      @NonNull final BoolFilterBuilder boolFilter, final int max,
+      @NonNull final String[] fields,
+      @NonNull final List<String> sort) {
+    val query = filteredQuery(matchAllQuery(), boolFilter);
+
+    // Donor type is not analyzed but this works due to terms-lookup on _id field.
+    // https://github.com/icgc-dcc/dcc-release/blob/develop/dcc-release-resources/src/main/resources/org/icgc/dcc/release/resources/mappings/donor.mapping.json#L12-L13
+    val request = client.prepareSearch(indexName)
+        .setTypes(DONOR.getId())
+        .setSearchType(searchType)
+        .setQuery(query)
+        .setSize(max)
+        .addFields(fields);
+
+    sort.forEach(s -> request.addSort(s, ASC));
+    log.debug("Union ES Query: {}", request);
+    val response = request.execute().actionGet();
+    log.debug("ElasticSearch result is: '{}'", response);
+    return response;
   }
 
   @Override
@@ -498,22 +475,22 @@ public class DonorRepository implements Repository {
   }
 
   public Map<String, Object> findOne(String id, Query query) {
-    val search = client.prepareGet(index, TYPE.getId(), id)
-        .setFields(getFields(query, KIND));
-    setFetchSourceOfGetRequest(search, query, KIND);
+    val search = client.prepareGet(indexName, IndexType.DONOR.getId(), id)
+        .setFields(getFields(query, EntityType.DONOR));
+    setFetchSourceOfGetRequest(search, query, EntityType.DONOR);
 
     val response = search.execute().actionGet();
 
     if (response.isExists()) {
-      return createResponseMap(response, query, KIND);
+      return createResponseMap(response, query, EntityType.DONOR);
     }
 
     if (!isRepositoryDonor(client, id, repoIndexName)) {
       // We know this is guaranteed to throw a 404, since the 'id' was not found in the first query.
-      checkResponseState(id, response, KIND);
+      checkResponseState(id, response, EntityType.DONOR);
     }
 
-    return singletonMap(FIELDS_MAPPING.get(KIND).get("id"), id);
+    return singletonMap(FIELDS_MAPPING.get(EntityType.DONOR).get("id"), id);
   }
 
   /**
@@ -526,8 +503,8 @@ public class DonorRepository implements Repository {
     val donorFilters = FilterBuilders.boolFilter()
         .must(FilterBuilders.termFilter("_project_id", projectId));
 
-    val search = client.prepareSearch(index)
-        .setTypes(TYPE.getId())
+    val search = client.prepareSearch(indexName)
+        .setTypes(IndexType.DONOR.getId())
         .setSearchType(QUERY_THEN_FETCH)
         .setSize(6000)
         .setFetchSource("specimen", null)
@@ -573,16 +550,16 @@ public class DonorRepository implements Repository {
    * a boolean.
    * 
    * @param ids A List of ids that can identify a donor
-   * @param False - donor-text, True - file-donor-text
+   * @param isForExternalFile False - donor-text, True - file-donor-text
    * @return Returns the SearchResponse object from the query.
    */
   public SearchResponse validateIdentifiers(@NonNull List<String> ids, boolean isForExternalFile) {
     val maxSize = 5000;
     val fields = isForExternalFile ? FILE_DONOR_ID_SEARCH_FIELDS : DONOR_ID_SEARCH_FIELDS;
-    val indexName = isForExternalFile ? repoIndexName : index;
-    val indexType = isForExternalFile ? Type.FILE_DONOR_TEXT : Type.DONOR_TEXT;
+    val index = isForExternalFile ? repoIndexName : indexName;
+    val indexType = isForExternalFile ? FILE_DONOR_TEXT : DONOR_TEXT;
 
-    val search = client.prepareSearch(indexName)
+    val search = client.prepareSearch(index)
         .setTypes(indexType.getId())
         .setSearchType(QUERY_THEN_FETCH)
         .setSize(maxSize);

@@ -29,11 +29,11 @@ import org.dcc.portal.pql.query.QueryEngine;
 import org.elasticsearch.action.search.SearchResponse;
 import org.elasticsearch.search.SearchHit;
 import org.elasticsearch.search.SearchHits;
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
-import org.icgc.dcc.portal.server.model.IndexModel.Type;
+import org.icgc.dcc.portal.server.model.EntityType;
+import org.icgc.dcc.portal.server.model.Query;
+import org.icgc.dcc.portal.server.model.IndexType;
 import org.icgc.dcc.portal.server.model.param.FiltersParam;
 import org.icgc.dcc.portal.server.test.TestIndex;
-import org.icgc.dcc.portal.server.model.Query;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -58,14 +58,14 @@ public class GeneRepositoryTest extends BaseElasticSearchTest {
 
   GeneRepository geneRepository;
 
-  ImmutableMap<String, String> FIELDS = FIELDS_MAPPING.get(Kind.GENE);
+  ImmutableMap<String, String> FIELDS = FIELDS_MAPPING.get(EntityType.GENE);
 
   @Before
   public void setUp() throws Exception {
     this.testIndex = TestIndex.RELEASE;
-    es.execute(createIndexMappings(Type.GENE, Type.GENE_CENTRIC).withData(bulkFile(getClass())));
+    es.execute(createIndexMappings(IndexType.GENE, IndexType.GENE_CENTRIC).withData(bulkFile(getClass())));
     geneRepository =
-        new GeneRepository(es.client(), testIndex.getModel(), new QueryEngine(es.client(), testIndex.getName()));
+        new GeneRepository(es.client(), new QueryEngine(es.client(), testIndex.getName()), TestIndex.RELEASE.getName());
   }
 
   @Test
@@ -139,7 +139,9 @@ public class GeneRepositoryTest extends BaseElasticSearchTest {
     SearchResponse responseNot = geneRepository.findAllCentric(queryNot);
     SearchHits hitsNot = responseNot.getHits();
 
-    assertThat(hitsNot.getTotalHits()).isEqualTo(2);
+    // Every single gene contains at least one ovary or pancreas donor, hence we get no results back.
+    // This behavior is new after: DCC-5113
+    assertThat(hitsNot.getTotalHits()).isEqualTo(0);
   }
 
   @Test

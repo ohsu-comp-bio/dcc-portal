@@ -31,7 +31,8 @@
     });
 
     $stateProvider.state ('dataRepositories', {
-      url: '/repositories',
+      url: '/repositories?filters',
+      reloadOnSearch: false,
       templateUrl: '/scripts/repository/views/repository.external.html',
       controller: 'ExternalRepoController as ExternalRepoController'
     });
@@ -41,8 +42,11 @@
       templateUrl: '/scripts/repository/views/repository.external.file.html',
       controller: 'ExternalFileInfoController as fileCtrlr',
       resolve: {
-        fileInfo: ['$stateParams', 'ExternalRepoService', function ($stateParams, ExternalRepoService) {
-          return ExternalRepoService.getFileInfo ($stateParams.id);
+        fileInfo: ['$stateParams', 'ExternalRepoService', 
+        function ($stateParams, ExternalRepoService) {
+          return ExternalRepoService.getFileInfo($stateParams.id).then(function(file){
+            return file;
+          });
         }]
       }
     });

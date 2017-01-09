@@ -15,23 +15,6 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * Copyright 2016(c) The Ontario Institute for Cancer Research. All rights reserved.
- *
- * This program and the accompanying materials are made available under the terms of the GNU Public
- * License v3.0. You should have received a copy of the GNU General Public License along with this
- * program. If not, see <http://www.gnu.org/licenses/>.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
- * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY
- * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 (function() {
   'use strict';
 
@@ -56,14 +39,8 @@
         var _h = _$location.hash();
 
         if (! _shouldSuppressScrollTop() && (! _h || ! _h.match(/^!([\w\-]+)$/i))) {
-          //console.log('Restoring scroll top to original position of: 0');
           jQuery(window).scrollTop(0);
         }
-        /*else {
-          console.log('No scroll!');
-        }*/
-
-
 
         return _originalHistoryMethod.apply(this, Array.prototype.slice.call(arguments));
       };
@@ -102,7 +79,6 @@
 
         if (match && match.length > 1) {
           hash = match[1];
-          //$location.hash(hash);
           to = - HEADER_HEIGHT;
         }
 
@@ -125,11 +101,8 @@
 
       // Prevents browser window from jumping around while navigating analysis
       if ( _shouldSuppressScrollTop() && ! _hash) {
-        //console.log('no scroll');
         return;
       }
-
-      //console.log('scroll');
 
       // Prevent the timeout from being fired multiple times if called before previous
       // timeout is complete. Make the last request the most valid.

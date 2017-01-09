@@ -9,15 +9,13 @@ import static org.icgc.dcc.portal.server.util.ElasticsearchResponseUtils.getStri
 import java.util.List;
 import java.util.Map;
 
-import lombok.Value;
-import lombok.val;
-
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
+
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.Value;
+import lombok.val;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -124,13 +122,19 @@ public class Donor {
   @ApiModelProperty(value = "Exposure")
   List<Exposure> exposure;
 
+  @ApiModelProperty(value = "Biomarker")
+  List<Biomarker> biomarker;
+
+  @ApiModelProperty(value = "Surgery")
+  List<Surgery> surgery;
+
   @ApiModelProperty(value = "State")
   String state;
 
   @SuppressWarnings("unchecked")
   @JsonCreator
   public Donor(Map<String, Object> fieldMap) {
-    val fields = FIELDS_MAPPING.get(Kind.DONOR);
+    val fields = FIELDS_MAPPING.get(EntityType.DONOR);
     id = getString(fieldMap.get(fields.get("id")));
     submittedDonorId = getString(fieldMap.get(fields.get("submittedDonorId")));
     projectId = getString(fieldMap.get(fields.get("projectId")));
@@ -140,16 +144,16 @@ public class Donor {
     tumourSubtype = getString(fieldMap.get(fields.get("tumourSubtype")));
     ssmAffectedGenes = getLong(fieldMap.get(fields.get("ssmAffectedGenes")));
     ssmCount = getLong(fieldMap.get(fields.get("ssmCount")));
-    cnsmExists = getBoolean(fieldMap.get(fields.get("cnsmExists")));
-    stsmExists = getBoolean(fieldMap.get(fields.get("stsmExists")));
-    sgvExists = getBoolean(fieldMap.get(fields.get("sgvExists")));
-    methSeqExists = getBoolean(fieldMap.get(fields.get("methSeqExists")));
-    methArrayExists = getBoolean(fieldMap.get(fields.get("methArrayExists")));
-    expSeqExists = getBoolean(fieldMap.get(fields.get("expSeqExists")));
-    expArrayExists = getBoolean(fieldMap.get(fields.get("expArrayExists")));
-    pexpExists = getBoolean(fieldMap.get(fields.get("pexpExists")));
-    mirnaSeqExists = getBoolean(fieldMap.get(fields.get("mirnaSeqExists")));
-    jcnExists = getBoolean(fieldMap.get(fields.get("jcnExists")));
+    cnsmExists = getBoolean(fieldMap.get(fields.get("cnsmExists")), null);
+    stsmExists = getBoolean(fieldMap.get(fields.get("stsmExists")), null);
+    sgvExists = getBoolean(fieldMap.get(fields.get("sgvExists")), null);
+    methSeqExists = getBoolean(fieldMap.get(fields.get("methSeqExists")), null);
+    methArrayExists = getBoolean(fieldMap.get(fields.get("methArrayExists")), null);
+    expSeqExists = getBoolean(fieldMap.get(fields.get("expSeqExists")), null);
+    expArrayExists = getBoolean(fieldMap.get(fields.get("expArrayExists")), null);
+    pexpExists = getBoolean(fieldMap.get(fields.get("pexpExists")), null);
+    mirnaSeqExists = getBoolean(fieldMap.get(fields.get("mirnaSeqExists")), null);
+    jcnExists = getBoolean(fieldMap.get(fields.get("jcnExists")), null);
     ageAtDiagnosis = getLong(fieldMap.get(fields.get("ageAtDiagnosis")));
     ageAtDiagnosisGroup = getString(fieldMap.get(fields.get("ageAtDiagnosisGroup")));
     ageAtEnrollment = getLong(fieldMap.get(fields.get("ageAtEnrollment")));
@@ -177,27 +181,40 @@ public class Donor {
     therapy = buildTherapy((List<Map<String, Object>>) fieldMap.get("therapy"));
     family = buildFamily((List<Map<String, Object>>) fieldMap.get("family"));
     exposure = buildExposure((List<Map<String, Object>>) fieldMap.get("exposure"));
+    biomarker = buildBiomarker((List<Map<String, Object>>) fieldMap.get("biomarker"));
+    surgery = buildSurgery((List<Map<String, Object>>) fieldMap.get("surgery"));
 
     state = getString(fieldMap.get(fields.get("state")));
   }
 
-  private List<Exposure> buildExposure(List<Map<String, Object>> field) {
+  private static List<Surgery> buildSurgery(List<Map<String, Object>> field) {
+    if (field == null) return null;
+    return field.stream().map(Surgery::new).collect(toImmutableList());
+  }
+
+  private static List<Biomarker> buildBiomarker(List<Map<String, Object>> field) {
+    if (field == null) return null;
+    return field.stream().map(Biomarker::new).collect(toImmutableList());
+  }
+
+  private static List<Exposure> buildExposure(List<Map<String, Object>> field) {
     if (field == null) return null;
     return field.stream().map(Exposure::new).collect(toImmutableList());
   }
 
-  private List<Family> buildFamily(List<Map<String, Object>> field) {
+  private static List<Family> buildFamily(List<Map<String, Object>> field) {
     if (field == null) return null;
     return field.stream().map(Family::new).collect(toImmutableList());
   }
 
-  private List<Therapy> buildTherapy(List<Map<String, Object>> field) {
+  private static List<Therapy> buildTherapy(List<Map<String, Object>> field) {
     if (field == null) return null;
     return field.stream().map(Therapy::new).collect(toImmutableList());
   }
 
-  private List<Specimen> buildSpecimen(List<Map<String, Object>> field) {
+  private static List<Specimen> buildSpecimen(List<Map<String, Object>> field) {
     if (field == null) return null;
     return field.stream().map(Specimen::new).collect(toImmutableList());
   }
+
 }
