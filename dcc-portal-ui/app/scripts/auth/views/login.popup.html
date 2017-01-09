@@ -7,25 +7,25 @@
     </div>
     <div class="modal-body" style="max-height:none;padding-bottom:0">
 
-        <div data-ng-hide="error" class="alert-info">
+        <div data-ng-hide="params.error" class="alert-info">
             <translate>Sign in using your ICGC DACO-approved account for controlled data</translate>
         </div>
-        <div data-ng-show="error">
+        <div data-ng-show="params.error">
             <div class="alert-error">
                 {{params.error}}
             </div>
             <div class="alert">
-                <translate>Problems logging in?</translate> 
+                <translate>Problems logging in?</translate>
                 <a href="mailto:dcc-support@icgc.org?Subject=Problem%20Logging%20In"><i
                     class="icon-mail"></i> <translate>Contact Us</translate></a> <translate>or</translate>
                 <a href="http://icgc.org/daco/"><i class="icon-pilcrow"></i> <translate>Apply for access to controlled data.</translate></a>
             </div>
         </div>
         <ul class="open-id-providers">
-            <li class="open-id-provider" data-ng-class="{active: params.provider=='ccc'}"
-                data-ng-click="params.provider='ccc'">
+            <li class="open-id-provider" data-ng-class="{active: params.provider=='ohsu'}"
+                data-ng-click="params.provider='ohsu'">
                 <span class="logo">
-                  <img style="margin-bottom: .5rem" src="/styles/images/ccc-logo.png"></span>
+                  <img src="/styles/images/ohsu-logo.png"></span>
             </li>
             <li class="open-id-provider" data-ng-class="{active: params.provider=='icgc'}"
                 data-ng-click="params.provider='icgc'">
@@ -41,19 +41,18 @@
             </li>
         </ul>
 
-        <!--<p data-ng-show="provider=='icgc'">Sign in using your <strong>ICGC</strong> account.<br><br>-->
-        <!--<label>Username</label><br>-->
-        <!--<input type="text" id="cudUsername" style="width:50%" data-ng-model="cudUsername">-->
-        <!--<br>-->
-        <!--<label>Paasword</label><br>-->
-        <!--<input type="password" id="cudPassword" style="width:50%" data-ng-model="cudPassword">-->
-        <!--</p>-->
+        <p data-ng-show="params.provider=='ohsu'">Sign in using your <strong>OHSU</strong> account.<br><br>
+          <label>Domain</label><br>
+          <input type="text" id="osDomain" style="width:50%" data-ng-model="params.osDomain">
+          <br>
+          <label>Username</label><br>
+          <input type="text" id="osUsername" style="width:50%" data-ng-model="params.osUsername">
+          <br>
+          <label>Password</label><br>
+          <input type="password" id="osPassword" style="width:50%" data-ng-model="params.osPassword">
+        </p>
 
         <p data-ng-show="params.provider=='icgc'"><translate has-markup>Sign in using your <strong>ICGC</strong> account.</translate></p>
-
-        <p data-ng-show="params.provider=='google'||params.provider=='yahoo'||params.provider=='ccc'">
-            <translate has-markup translate-comment="{{params.provider}} comes out to be either CCC, Google, or Yahoo">Sign in using <strong style="text-transform: capitalize">{{params.provider}}</strong> as your OpenID provider</translate>
-        </p>
 
         <p data-ng-show="params.provider=='openid'">
             <label for="openIDUrl"><translate has-markup>Enter your <strong>OpenID</strong> url</translate></label><br>
