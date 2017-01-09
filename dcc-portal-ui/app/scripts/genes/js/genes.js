@@ -26,7 +26,8 @@
       templateUrl: 'scripts/genes/views/gene.html',
       controller: 'GeneCtrl as GeneCtrl',
       resolve: {
-        gene: ['$stateParams', 'Genes', function ($stateParams, Genes) {
+        gene: ['$stateParams', 'Genes', 
+        function ($stateParams, Genes) {
           return Genes.one($stateParams.id).get({include: ['projects', 'transcripts']}).then(function(gene) {
             return gene;
           });
@@ -67,7 +68,7 @@
       var observers = elements.map(function (element) {
         var observer = new MutationObserver(function (mutations) {
           var shouldScroll = mutations.reduce(function (isSignificantMutation, mutation) {
-            return isSignificantMutation || checkMutationSignificance(mutation);
+            return isSignificantMutation || checkMutationSignificance();
           });
           if (shouldScroll) {
             scrollToCurrent();
@@ -102,13 +103,15 @@
   var module = angular.module('icgc.genes.controllers', ['icgc.genes.models']);
 
   module.controller('GeneCtrl', function ($scope, HighchartsService, Page, Projects, Mutations,
-    LocationService, Donors, Genes, GMService, Restangular, ExternalLinks, gene) {
+    LocationService, Donors, Genes, GMService, Restangular, ExternalLinks, gene, $filter) {
 
     var _ctrl = this;
     Page.setTitle(gene.id);
     Page.setPage('entity');
 
     _ctrl.ExternalLinks = ExternalLinks;
+    _ctrl.shouldLimitDisplayProjects = true;
+    _ctrl.defaultProjectsLimit = 10;
 
     _ctrl.gvOptions = {location: false, panels: false, zoom: 50};
 
@@ -117,6 +120,11 @@
     _ctrl.gene.fprojects = [];
     _ctrl.totalDonors = 0;
     _ctrl.gene.hasGVChromosome = GMService.isValidChromosome(_ctrl.gene.chromosome);
+
+    // Defaults for client side pagination 
+    _ctrl.currentProjectsPage = 1;
+    _ctrl.defaultProjectsRowLimit = 10;
+    _ctrl.rowSizes = [10, 25, 50];
 
     _ctrl.hasNoExternal = function(dbId) {
       return _.get(_ctrl.gene, ['externalDbIds', dbId], []).length === 0;
@@ -195,9 +203,10 @@
             yValue: 'uiAffectedDonorPercentage'
           });
           _ctrl.totalDonors = projectDonors.Total;
+        }).then(function(){
+           _ctrl.gene.projects = projects;
+           _ctrl.gene.uiProjects = getUiProjectsJSON(projects);
         });
-
-        _ctrl.gene.projects = projects.hits;
       });
 
       var params = {
@@ -210,7 +219,6 @@
         _ctrl.mutationFacets = d.facets;
       });
     }
-
 
     if (_ctrl.gene.hasOwnProperty('transcripts')) {
       var geneTranscriptPromie = Genes.one(_ctrl.gene.id).handler.one('affected-transcripts').get({});
@@ -234,6 +242,24 @@
       });
     }
 
+    // Creating a new Object for table filters
+    function getUiProjectsJSON(projects){
+      return projects.hits.map(function(project){
+        return _.extend({},{
+          uiId: project.id,
+          uiName: project.name,
+          uiFilteredDonorCount: $filter('number')(project.filteredDonorCount),
+          uiPrimarySite: project.primarySite,
+          uiTumourType: project.tumourType,
+          uiTumourSubtype: project.tumourSubtype,
+          uiAffectedDonorPercentage: $filter('number')(project.uiAffectedDonorPercentage*100, 2),
+          uiAdvQuery: project.advQuery,
+          uiSSMTestedDonorCount: $filter('number')(project.ssmTestedDonorCount),
+          uiMutationCount: $filter('number')(project.mutationCount)
+        });
+      });
+    }
+    
     $scope.$on('$locationChangeSuccess', function (event, dest) {
       if (dest.indexOf('genes') !== -1) {
         refresh();
@@ -297,8 +323,13 @@
       }
 
       function refresh() {
+
+        var params = LocationService.getPaginationParams('mutations');
+
         Genes.one().getMutations({
           include: 'consequences',
+          from: params.from,
+          size: params.size,
           filters: LocationService.filters()
         }).then(success);
       }
@@ -312,9 +343,15 @@
       refresh();
     });
 
-  module.controller ('GeneCompoundsCtrl', function ($stateParams, CompoundsService, RouteInfoService) {
+  module.controller ('GeneCompoundsCtrl', function ($stateParams, CompoundsService, 
+    RouteInfoService, $filter) {
     var geneId = $stateParams.id;
     var _this = this;
+
+    // Defaults for client side pagination 
+    _this.currentCompoundsPage = 1;
+    _this.defaultCompoundsRowLimit = 10;
+    _this.rowSizes = [10, 25, 50];
 
     this.compoundUrl = RouteInfoService.get ('drugCompound').href;
     this.concatAtcDescriptions = function (compound) {
@@ -326,10 +363,26 @@
       var compounds = data.plain();
 
       _this.compounds = compounds;
+      _this.uiCompounds = getUiCompoundsJSON(_this.compounds);
 
     }, function (error) {
-      console.log ('Error getting compounds related to the geneId', error);
+      throw new Error('Error getting compounds related to the geneId', error);
     });
+
+    function getUiCompoundsJSON(compounds){
+      return compounds.map(function(compound){
+        return _.extend({},{
+          uiZincId: compound.zincId,
+          uiName: compound.name,
+          uiFullName: compound.name + ' (' + compound.zincId + ')',
+          uiDescription: _this.concatAtcDescriptions(compound),
+          uiDrugClass: $filter('formatCompoundClass')(compound.drugClass),
+          cancerTrialCount: compound.cancerTrialCount,
+          uiCancerTrials: $filter('number')(compound.cancerTrialCount)
+        });
+      });
+    }
+
   });
 
 })();

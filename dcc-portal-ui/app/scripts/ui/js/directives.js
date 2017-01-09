@@ -33,7 +33,10 @@ angular.module('icgc.ui', [
   'icgc.ui.badges',
   'icgc.ui.copyPaste',
   'icgc.ui.popover',
-  'icgc.ui.numberTween'
+  'icgc.ui.numberTween',
+  'icgc.ui.iobio',
+  'icgc.ui.loader',
+  'icgc.ui.splitButtons'
 ]);
 
 
@@ -118,9 +121,12 @@ angular.module('app.ui.hidetext', []).directive('hideText', function () {
     restrict: 'E',
     replace: true,
     transclude: true,
-    scope: {},
-    template: '<div class="t_sh">' +
-              '{{ text }}' +
+    scope: {
+      class: '@',
+      highlightFilter: '='
+    },
+    template: '<div class="t_sh {{class}}">' +
+              '<span data-ng-bind-html="text | highlight: highlightFilter"></span>' +
               '<div ng-if="text.length>=limit" class="t_sh__toggle">' +
               '<a ng-click="toggle()" href="" class="t_tools__tool">' +
               '<span ng-if="!expanded"><i class="icon-caret-down"></i> more</span>' +
@@ -407,7 +413,7 @@ angular.module('icgc.ui.copyPaste', [])
     // Configure ZeroClipboard in case we need to use it later.
     ZeroClipboard.config(angular.extend(zeroClipboardPathConfig, copyPaste.config));
   })
-  .directive('copyToClip', function ($document) {
+  .directive('copyToClip', function ($document, gettextCatalog) {
 
         return {
           restrict: 'A',
@@ -510,7 +516,7 @@ angular.module('icgc.ui.copyPaste', [])
                              '-' + pasteCommandAlphaKey + ' to paste.';
                     }
                   }
-                  else if (isSuccess) {
+                  else {
                     msg = 'Press' + copyPasteCommandKey + '-' + copyCommandAlphaKey +
                     ' to copy and ' + copyPasteCommandKey + '-' +
                     pasteCommandAlphaKey + ' to paste.';
@@ -725,7 +731,7 @@ angular.module('icgc.ui.copyPaste', [])
                 }
                 
                  if (_promptOnCopy) {
-                  _showTipMessage(null, 'Click here to copy to your clipboard.');
+                  _showTipMessage(null, gettextCatalog.getString('Click here to copy to your clipboard.'));
                 }
                 
                 // Destroy the ZeroClipboard Client if it exists...and remove listeners
@@ -832,4 +838,117 @@ angular.module('icgc.ui.badges', []).directive('pcawgBadge', function () {
         scope.text = scope.text || scope.study;
       }
     };
+  });
+
+angular.module('icgc.ui.iobio', [])
+  .component('iobioStatistics', {
+      templateUrl: 'scripts/ui/views/iobio-statistics.html',
+      bindings: {
+        fileCopies: '=',
+        objectId: '=',
+        rowId: '='
+      },
+      controller: function($modal, $rootScope){
+        var _ctrl = this;
+
+        function uniquelyConcat (fileCopies, property) {
+          return _(fileCopies)
+            .map (property)
+            .unique()
+            .join(', ');
+        }
+
+        _ctrl.fileFormats = function (fileCopies) {
+          return uniquelyConcat (fileCopies, 'fileFormat');
+        };
+
+        _ctrl.awsOrCollab = function(fileCopies) {
+          return _.includes(_.pluck(fileCopies, 'repoCode'), 'aws-virginia') ||
+            _.includes(_.pluck(fileCopies, 'repoCode'), 'collaboratory');
+        };
+
+        _ctrl.showIobioModal = function(objectId, objectName, name) {
+          var fileObjectId = objectId;
+          var fileObjectName = objectName;
+          var fileName = name;
+          $modal.open ({
+            controller: 'ExternalIobioController',
+            template: '<section id="bam-statistics" class="bam-statistics-modal">'+
+              '<bamstats bam-id="bamId" on-modal=true bam-name="bamName" bam-file-name="bamFileName" data-ng-if="bamId">'+
+              '</bamstats></section>',
+            windowClass: 'bam-iobio-modal',
+            resolve: {
+              params: function() {
+                return {
+                  fileObjectId: fileObjectId,
+                  fileObjectName: fileObjectName,
+                  fileName: fileName
+                };
+              }
+            }
+          }).opened.then(function() {
+            setTimeout(function() { $rootScope.$broadcast('bamready.event', {})}, 300);
+
+          });
+        };
+
+        _ctrl.showVcfIobioModal = function(objectId, objectName, name) {
+          var fileObjectId = objectId;
+          var fileObjectName = objectName;
+          var fileName = name;
+          $modal.open ({
+            controller: 'ExternalVcfIobioController',
+            template: '<section id="vcf-statistics" class="vcf-statistics-modal">'+
+              '<vcfstats vcf-id="vcfId" on-modal=true vcf-name="vcfName" vcf-file-name="vcfFileName" data-ng-if="vcfId">'+
+              '</vcfstats></section>',
+            windowClass: 'vcf-iobio-modal',
+            resolve: {
+              params: function() {
+                return {
+                  fileObjectId: fileObjectId,
+                  fileObjectName: fileObjectName,
+                  fileName: fileName
+                };
+              }
+            }
+          }).opened.then(function() {
+            setTimeout(function() { $rootScope.$broadcast('bamready.event', {})}, 300);
+          });
+        };
+
+        _ctrl.getAwsOrCollabFileName = function(fileCopies) {
+          try {
+            var fCopies = _.filter(fileCopies, function(fCopy) {
+              return fCopy.repoCode === 'aws-virginia' || fCopy.repoCode === 'collaboratory';
+            });
+
+            return _.pluck(fCopies, 'fileName')[0];
+          } catch (err) {
+            console.error(err);
+            return 'Could Not Retrieve File Name';
+          }
+        };
+
+      }
+  });
+
+angular.module('icgc.ui.loader', [])
+  .component('loadingBlock', {
+    template: 
+    `<span class="loading-block">
+        {{ ['&#9724;&#9724;&#9724;','&#9724;&#9724;&#9724;', '&#9724;&#9724;', '&#9724;'] | _:'sample' }}
+      </span>`,
+      replace: true
+  });
+
+angular.module('icgc.ui.splitButtons', [])
+  .component('entitySetFacet', {
+    templateUrl: '/scripts/ui/views/entity-set-facet.html',
+    bindings: {
+      entityType: '@',
+      entitySet: '=',
+      clickEvent: '<',
+      selectEvent: '<'
+    },
+    replace: true
   });

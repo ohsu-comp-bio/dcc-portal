@@ -71,7 +71,6 @@ import javax.ws.rs.QueryParam;
 
 import org.icgc.dcc.portal.server.model.Donors;
 import org.icgc.dcc.portal.server.model.Genes;
-import org.icgc.dcc.portal.server.model.IndexModel;
 import org.icgc.dcc.portal.server.model.Mutation;
 import org.icgc.dcc.portal.server.model.Mutations;
 import org.icgc.dcc.portal.server.model.param.FiltersParam;
@@ -114,13 +113,6 @@ public class MutationResource extends Resource {
   private final GeneService geneService;
   private final DonorService donorService;
 
-  // When the query is keyed by gene id, it makes little sense to use entity set.
-  private void removeMutationEntitySet(ObjectNode filters) {
-    if (filters.path("mutation").path(IndexModel.API_ENTITY_SET_ID_FIELD_NAME).isMissingNode() == false) {
-      ((ObjectNode) filters.get("mutation")).remove(IndexModel.API_ENTITY_SET_ID_FIELD_NAME);
-    }
-  }
-
   @GET
   @Timed
   @ApiOperation(value = RETURNS_LIST + MUTATION + S, response = Mutation.class)
@@ -135,10 +127,8 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_FACETS_ONLY_DESCRIPTION) @QueryParam(API_FACETS_ONLY_PARAM) @DefaultValue("false") boolean facetsOnly) {
     val filters = filtersParam.get();
 
-    log.info(FIND_ALL_TEMPLATE, new Object[] { size, MUTATION, from, sort, order, filters });
-
+    log.debug(FIND_ALL_TEMPLATE, new Object[] { size, MUTATION, from, sort, order, filters });
     val query = query(fields, include, filters, from, size, sort, order);
-
     return mutationService.findAllCentric(query, facetsOnly);
   }
 
@@ -150,8 +140,7 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_FILTER_VALUE) @QueryParam(API_FILTER_PARAM) @DefaultValue(DEFAULT_FILTERS) FiltersParam filtersParam) {
     ObjectNode filters = filtersParam.get();
 
-    log.info(COUNT_TEMPLATE, GENE, filters);
-
+    log.debug(COUNT_TEMPLATE, GENE, filters);
     return mutationService.count(query().filters(filters).build());
   }
 
@@ -185,12 +174,8 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_ORDER_VALUE, allowableValues = API_ORDER_ALLOW) @QueryParam(API_ORDER_PARAM) @DefaultValue(DEFAULT_ORDER) String order) {
     ObjectNode filters = filtersParam.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_FIND_TEMPLATE, DONOR, mutationIds.get());
-
     filters = mergeFilters(filters, MUTATION_FILTER_TEMPLATE, JsonUtils.join(mutationIds.get()));
-
     return donorService.findAllCentric(query().filters(filters).fields(fields).includes(include)
         .from(from.get()).size(size.get()).sort(sort).order(order).build());
   }
@@ -204,12 +189,8 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_FILTER_VALUE) @QueryParam(API_FILTER_PARAM) @DefaultValue(DEFAULT_FILTERS) FiltersParam filtersParam) {
     ObjectNode filters = filtersParam.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_COUNT_TEMPLATE, DONOR, mutationId);
-
     filters = mergeFilters(filters, MUTATION_FILTER_TEMPLATE, mutationId);
-
     return donorService.count(query().filters(filters).build());
   }
 
@@ -224,10 +205,7 @@ public class MutationResource extends Resource {
     ObjectNode filters = filtersParam.get();
     List<String> mutations = mutationIds.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_COUNT_TEMPLATE, DONOR, mutations);
-
     val queries = queries(filters, MUTATION_FILTER_TEMPLATE, mutations);
     val counts = donorService.counts(queries);
 
@@ -256,12 +234,8 @@ public class MutationResource extends Resource {
     ObjectNode filters = filtersParam.get();
     List<String> mutations = mutationIds.get();
 
-    removeMutationEntitySet(filters);
-
-    log.info(NESTED_FIND_TEMPLATE, GENE, mutations);
-
+    log.debug(NESTED_FIND_TEMPLATE, GENE, mutations);
     filters = mergeFilters(filters, MUTATION_FILTER_TEMPLATE, JsonUtils.join(mutations));
-
     return geneService.findAllCentric(query().filters(filters).fields(fields).includes(include)
         .from(from.get()).size(size.get()).sort(sort).order(order).build());
   }
@@ -275,12 +249,8 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_FILTER_VALUE) @QueryParam(API_FILTER_PARAM) @DefaultValue(DEFAULT_FILTERS) FiltersParam filtersParam) {
     ObjectNode filters = filtersParam.get();
 
-    removeMutationEntitySet(filters);
-
-    log.info(NESTED_COUNT_TEMPLATE, GENE, mutationId);
-
+    log.debug(NESTED_COUNT_TEMPLATE, GENE, mutationId);
     filters = mergeFilters(filters, MUTATION_FILTER_TEMPLATE, mutationId);
-
     return geneService.count(query().filters(filters).build());
   }
 
@@ -295,10 +265,7 @@ public class MutationResource extends Resource {
     ObjectNode filters = filtersParam.get();
     List<String> mutations = mutationIds.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_COUNT_TEMPLATE, GENE, mutations);
-
     val queries = queries(filters, MUTATION_FILTER_TEMPLATE, mutations);
     val counts = geneService.counts(queries);
 
@@ -320,12 +287,8 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_FILTER_VALUE) @QueryParam(API_FILTER_PARAM) @DefaultValue(DEFAULT_FILTERS) FiltersParam filtersParam) {
     ObjectNode filters = filtersParam.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_NESTED_COUNT_TEMPLATE, new Object[] { DONOR, mutationId, geneId });
-
     filters = mergeFilters(filters, GENE_MUTATION_FILTER_TEMPLATE, geneId, mutationId);
-
     return donorService.count(query().filters(filters).build());
   }
 
@@ -342,10 +305,7 @@ public class MutationResource extends Resource {
     List<String> mutations = mutationIds.get();
     List<String> genes = geneIds.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_NESTED_COUNT_TEMPLATE, new Object[] { DONOR, mutations, genes });
-
     val queries = queries(filters, GENE_MUTATION_FILTER_TEMPLATE, genes, mutations);
     val counts = donorService.nestedCounts(queries);
 
@@ -369,10 +329,7 @@ public class MutationResource extends Resource {
       @ApiParam(value = API_FILTER_VALUE) @QueryParam(API_FILTER_PARAM) @DefaultValue(DEFAULT_FILTERS) FiltersParam filtersParam) {
     ObjectNode filters = filtersParam.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_NESTED_COUNT_TEMPLATE, new Object[] { DONOR, mutationId, projectId });
-
     val donors = new FiltersParam(String.format(PROJECT_MUTATION_FILTER_TEMPLATE, projectId, mutationId));
     JsonUtils.merge(filters, donors.get());
 
@@ -393,10 +350,7 @@ public class MutationResource extends Resource {
     List<String> projects = projectIds.get();
     List<String> mutations = mutationIds.get();
 
-    removeMutationEntitySet(filters);
-
     log.info(NESTED_NESTED_COUNT_TEMPLATE, new Object[] { DONOR, mutations, projects });
-
     val queries = queries(filters, PROJECT_MUTATION_FILTER_TEMPLATE, projects, mutations);
     val counts = donorService.nestedCounts(queries);
 

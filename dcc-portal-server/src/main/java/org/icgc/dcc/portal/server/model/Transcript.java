@@ -17,20 +17,17 @@
 
 package org.icgc.dcc.portal.server.model;
 
-import static org.icgc.dcc.portal.server.model.IndexModel.FIELDS_MAPPING;
-
-import java.util.List;
-import java.util.Map;
-
-import lombok.Value;
-import lombok.val;
-
-import org.icgc.dcc.portal.server.model.IndexModel.Kind;
-
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.google.common.collect.Lists;
 import io.swagger.annotations.ApiModelProperty;
+import lombok.Value;
+import lombok.val;
+
+import java.util.List;
+import java.util.Map;
+
+import static org.icgc.dcc.portal.server.model.IndexModel.FIELDS_MAPPING;
 
 @Value
 @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -88,7 +85,7 @@ public class Transcript {
   @SuppressWarnings("unchecked")
   @JsonCreator
   public Transcript(Map<String, Object> fieldMap) {
-    val fields = FIELDS_MAPPING.get(Kind.TRANSCRIPT);
+    val fields = FIELDS_MAPPING.get(EntityType.TRANSCRIPT);
     id = (String) fieldMap.get(fields.get("id"));
     name = (String) fieldMap.get(fields.get("name"));
     type = (String) fieldMap.get(fields.get("type"));
@@ -109,11 +106,22 @@ public class Transcript {
     seqExonEnd = getLong(fieldMap.get(fields.get("seqExonEnd")));
     translationId = (String) fieldMap.get(fields.get("translationId"));
     aaMutation = (String) fieldMap.get(fields.get("aaMutation"));
-    consequence =
-        fieldMap.containsKey("consequence") ? new Consequence((Map<String, Object>) fieldMap.get("consequence")) : null;
+    consequence = buildConsequence((Map<String, Object>) fieldMap.get("consequence"),
+            (String) fieldMap.get(fields.get("functionalImpact")));
     domains = buildDomains((List<Map<String, Object>>) fieldMap.get("domains"));
     exons = buildExons((List<Map<String, Object>>) fieldMap.get("exons"));
     functionalImpact = (String) fieldMap.get(fields.get("functionalImpact"));
+  }
+
+  private Consequence buildConsequence(Map<String, Object> consequenceMap, String functionalImpact) {
+    if (consequenceMap == null) {
+      return null;
+    }
+    val consequence = new Consequence(consequenceMap);
+    if (functionalImpact != null) {
+      consequence.addFunctionalImpact(functionalImpact);
+    }
+    return consequence;
   }
 
   private List<Domain> buildDomains(List<Map<String, Object>> field) {

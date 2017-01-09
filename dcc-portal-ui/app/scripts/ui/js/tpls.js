@@ -28,17 +28,16 @@ angular.module('app.ui.tpls', [
 
 
 
-angular.module('template/lists', []).run(function ($templateCache) {
+angular.module('template/lists', []).run(function ($templateCache, gettextCatalog) {
 
   $templateCache.put('template/mutationTranscriptList.html',
     '<a target="_blank" ' +
     'data-ng-href="http://feb2014.archive.ensembl.org/Homo_sapiens/Transcript/Summary?db=core;t={{item.id}}">' +
-    '<i class="icon-external-link"></i>{{item.name}}</a>');
+    '<i class="icon-external-link"></i><span data-ng-bind-html="item.name | highlight: highlightFilter"></span></a>');
 
 
-  $templateCache.put('template/compoundList.html', '<span data-ng-bind="item.name"></span>');
+  $templateCache.put('template/compoundList.html', '<span data-ng-bind-html="item.name | highlight: highlightFilter"></span>');
   // Display a list of gene set annotations
-  // { name: xyz, id: xyz, qualifiers:[ xyz, xyz] }
   $templateCache.put('template/geneGeneSetList.html',
     '<ul data-ng-if="item.qualifiers">' +
     '<li data-ng-repeat="qualifier in item.qualifiers">' +
@@ -52,7 +51,7 @@ angular.module('template/lists', []).run(function ($templateCache) {
   $templateCache.put ( 'template/reactomePathway.html',
     '<span><a href="http://www.reactome.org/PathwayBrowser/#DIAGRAM={{item.diagramId}}&ID={{item.geneSetId}}"' +
     ' target="_blank">' +
-    '<i class="icon-external-link"></i> View in Reactome Pathway Browser</a>' +
+    '<i class="icon-external-link"></i> ' + gettextCatalog.getString('View in Reactome Pathway Browser') + '</a>' +
     '</span><pathway-tree tree="[item.root]"></pathway-tree><br>'
   );
 });
