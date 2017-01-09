@@ -24,7 +24,8 @@
 
 // The core proteinstructure directive -- this is used with a (possible) mutation to display
 // the structure. But the core value is the gene identifier.
-  module.directive('proteinstructure', function (chartmaker, $location, Protein, LocationService, $window) {
+  module.directive('proteinstructure', function (chartmaker, $location, Protein, LocationService, 
+    $window, gettextCatalog) {
 
     // This might look n**2, but it's not supposed to be.
     function transformDomains(domains) {
@@ -98,44 +99,55 @@
       return result;
     }
 
+    /**
+     * Transforms mutation hits to results for protein vewier. 
+     */
     function transformMutations(mutations, transcriptId) {
-      var result = [], fiFilter = [];
       var filters = LocationService.filters();
-
-      if (mutations.hits) {
-        mutations.hits.forEach(function (mutation) {
-          var transcript = _.find(mutation.transcripts, function (t) {
-            return t.id === transcriptId;
-          });
-          var start = transcript.consequence.aaMutation.replace(/[^\d]/g, '');
-
-          if (start > 0) {
-            var m = {
-              id: transcript.consequence.aaMutation,
-              position: start,
-              value: mutation.affectedDonorCountTotal,
-              ref: mutation.id,
-            };
-
-            // Add function impact scores
-            if (transcript.functionalImpact) {
-              m.functionalImpact = transcript.functionalImpact || 'Unknown';
-            }
-
-            if (filters.mutation && filters.mutation.functionalImpact) {
-              fiFilter = filters.mutation.functionalImpact.is;
-              if (fiFilter.indexOf(m.functionalImpact) >= 0) {
-                result.push(m);
-              }
-            } else {
-              result.push(m);
-            }
-
-          }
-        });
-      }
+      var result = _(mutations.hits)
+        .map(hit => ({
+            mutation: hit, 
+            transcript: _.find(hit.transcripts, {id: transcriptId})
+          }))
+        .filter( m => m.transcript !== undefined && m.transcript !== null )
+        .map( m => mapToResult(m) )
+        .filter( m => filterResults(m, filters) ) 
+        .value(); // Needed for lodash 3.x
 
       return result;
+    }
+
+     /**
+     * Maps to object for protein viewer
+     */
+    function mapToResult(d) {
+      var start = d.transcript.consequence.aaMutation.replace(/[^\d]/g, '');
+        var m = {
+          id: d.transcript.consequence.aaMutation,
+          position: start,
+          value: d.mutation.affectedDonorCountTotal,
+          ref: d.mutation.id,
+          functionalImpact: d.transcript.functionalImpact || 'Unknown'
+        };
+      
+      return m;
+    }
+
+    /** 
+     * Filters results based on valid start and criteria of filter
+     */
+    function filterResults(m, filters) {
+      if (m.start < 0) return false;
+
+      var fiFilter = _.get(filters, 'mutation.functionalImpact.is');
+      if (fiFilter) {
+        if (fiFilter.indexOf(m.functionalImpact) >= 0) {
+          return true;
+        }
+      } else {
+        return true;
+      }
+      return false; 
     }
 
     return {
@@ -187,10 +199,10 @@
                   }
 
                   var FI = getOverallFunctionalImpact(d);
-                  return 'Mutation ID: ' + d.ref + '<br>' +
-                         'Number of donors: ' + d.value + '<br>' +
-                         'Amino acid change: ' + d.id + '<br>' +
-                         'Functional Impact: ' + FI;
+                  return gettextCatalog.getString('Mutation ID') + ': ' + d.ref + '<br>' +
+                         gettextCatalog.getString('Number of donors') + ': ' + d.value + '<br>' +
+                         gettextCatalog.getString('Amino acid change') + ': ' + d.id + '<br>' +
+                         gettextCatalog.getString('Functional Impact') + ': ' + FI;
                 };
 
                 var position = null;
@@ -246,7 +258,7 @@
               if (chartData.mutations.length > 0) {
                 chart.display(element);
               } else {
-                chart.displayError(element, 'No Mutation occurs in coding region of this Gene.');
+                chart.displayError(element, gettextCatalog.getString('No Mutation occurs in coding region of this Gene.'));
               }
             });
           }

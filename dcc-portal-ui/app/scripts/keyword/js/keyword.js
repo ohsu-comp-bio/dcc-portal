@@ -15,6 +15,8 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import {ensureArray, ensureString, partiallyContainsIgnoringCase} from '../../common/js/ensure-input';
+
 (function () {
   'use strict';
 
@@ -33,40 +35,10 @@
 (function () {
   'use strict';
 
-  function ensureArray (array) {
-    return _.isArray (array) ? array : [];
-  }
-  function ensureString (string) {
-    return _.isString (string) ? string.trim() : '';
-  }
-
-  function words (phrase) {
-    return _.words (phrase, /[^, ]+/g);
-  }
-
-  function partiallyContainsIgnoringCase (phrase, keyword) {
-    if (_.isEmpty (phrase)) {
-      return false;
-    }
-
-    var phrase2 = phrase.toUpperCase();
-    var keyword2 = keyword.toUpperCase();
-
-    var tokens = [keyword2].concat (words (keyword2));
-    var matchKeyword = _(tokens)
-      .unique()
-      .find (function (token) {
-        return _.contains (phrase2, token);
-      });
-
-    return ! _.isUndefined (matchKeyword);
-  }
-
-
   var module = angular.module('icgc.keyword.controllers', ['icgc.keyword.models', 'icgc.common.text.utils']);
 
   module.controller('KeywordController',
-    function ($scope, Page, LocationService, debounce, Keyword, RouteInfoService, Abridger) {
+    function ($scope, Page, LocationService, debounce, Keyword, RouteInfoService, Abridger, gettextCatalog) {
       var pageSize;
 
       $scope.from = 1;
@@ -79,7 +51,8 @@
       $scope.dataRepoFileUrl = RouteInfoService.get ('dataRepositoryFile').href;
       $scope.compoundEntityUrl = RouteInfoService.get ('drugCompound').href;
 
-      Page.setTitle('Results for ' + $scope.query);
+      /// ${query} would be a search query/keyword
+      Page.setTitle(_.template(gettextCatalog.getString('Results for ${query}'))({query : $scope.query}));
       Page.setPage('q');
 
       $scope.clear = function () {
@@ -89,7 +62,7 @@
       };
 
       $scope.next = function () {
-        if ($scope.isBusy || $scope.isFinished) {
+        if ($scope.isBusy || $scope.isFinished || !$scope.results.hits.length) {
           return;
         }
 
@@ -130,7 +103,9 @@
 
         if ($scope.query && $scope.query.length >= 2) {
           LocationService.setParam('q', $scope.query);
-          Page.setTitle('Results for ' + $scope.query);
+
+          /// ${query} would be a search query/keyword
+          Page.setTitle(_.template(gettextCatalog.getString('Results for ${query}'))({query : $scope.query}));
           getResults();
         } else {
           $scope.results = null;

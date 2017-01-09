@@ -86,8 +86,8 @@
 
 
 	  // Create domain of x scale based off data
-	  x.domain(this.data.map(function(d) { return d.key ; }));
-	  y.domain([0, d3.max(this.data, function(d) { return d.total; })]);
+	  x.domain(this.data.map(function(d) { return d.key  }));
+	  y.domain([0, d3.max(this.data, function(d) { return d.total })]);
 
 	  // Add the x axis with tilted labels
 	  svg.append('g')
@@ -130,8 +130,8 @@
       'class':'horizontalGrid',
       'x1' : '-5',
       'x2' : config.width,
-      'y1' : function(d){ return y(d);},
-      'y2' : function(d){ return y(d);},
+      'y1' : function(d){ return y(d)},
+      'y2' : function(d){ return y(d)},
       'fill' : 'none',
       'shape-rendering' : 'crispEdges',
       'stroke' : '#DDD',
@@ -164,25 +164,32 @@
           return colour(d.colourKey);
         })
         .attr('width', x.rangeBand())
-        .attr('x',function(d){return x(d.key);})
-        .attr ('y', function (d) {return y (d.y0);})
+        .attr('x',function(d){return x(d.key)})
+        .attr ('y', function (d) {return y (d.y0)})
         .attr ('height', 0)
         .on('mouseover', function(d) {
+          var rect = d3.select(this);
 
-          svg.append('rect')
-            .classed('chart-focus', true)
-            .attr('x', x(d.key))
-            .attr('y', y(d.y1))
-            .attr('width', x.rangeBand())
-            .attr('height', function() { return y(d.y0) - y(d.y1); })
-            .attr('fill', 'none')
-            .attr('stroke', '#283e5d')
+          bar.selectAll('.stack')
+            .transition()
+            .attr({opacity: 0.5});
+
+          rect.transition()
+            .attr({opacity: 1});
+
+          rect.attr('stroke', '#283e5d')
             .attr('stroke-width', 2);
 
           config.tooltipShowFunc(this,d);
         })
         .on('mouseout', function() {
-          svg.selectAll('.chart-focus').remove();
+          var rect = d3.select(this);
+
+          bar.selectAll('.stack')
+            .transition()
+            .attr({opacity: 1});
+
+          rect.attr('stroke', 'none');
 
           config.tooltipHideFunc();
         })
@@ -192,8 +199,8 @@
           }
         })
         .transition()
-        .attr ('y', function (d) {return y (d.y1);})
-        .attr ('height', function (d) {return y (d.y0) - y (d.y1);});
+        .attr ('y', function (d) {return y (d.y1)})
+        .attr ('height', function (d) {return y (d.y0) - y (d.y1)});
   };
 
 	StackedBarChart.prototype.destroy = function(){

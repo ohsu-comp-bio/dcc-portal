@@ -68,17 +68,11 @@ $table-th-fixed-width: 200px;
     }
   }
 
-  td {
- //   overflow: hidden;
- //   text-overflow: ellipsis;
-  }
-
   th {
     font-size: 1rem;
     font-weight: 300;
     color: $black;
     text-overflow: normal;
-    //border: 1px solid $greyLighter;
   }
 
   // Table with icon check-boxes
@@ -96,6 +90,19 @@ $table-th-fixed-width: 200px;
     td {
       white-space: normal;
       word-break:break-all;
+
+      &.text-wrap {
+        word-break: normal;
+      }
+    }
+
+    &.table-condensed{
+
+      td{
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        word-break: normal;
+      }
     }
   }
 
@@ -115,6 +122,11 @@ $table-th-fixed-width: 200px;
           border-top: 1px solid $greyLighter;
        }
     }
+  }
+
+  .is-selected > td {
+    transition: 0.1s;
+    background-color: #ffffbe;
   }
 }
 
@@ -139,4 +151,66 @@ $table-th-fixed-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.table-text-wrap{
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: normal;
+}
+
+.table-filter {
+  margin: -8px 3px 14px auto !important;
+  width: 25% !important;
+  height: 33px;
+
+  &.small-filter{
+    width: 20% !important;
+  }
+
+  input{
+    margin: .4rem 0 0 0 !important;
+    height: 100% !important;
+    font-size: 1.1rem;
+    border-radius: 6px;
+    text-indent: 2rem;
+  }
+
+  i{
+    font-size: 1.1rem;
+
+    &.icon-search{
+      top: 0.7rem !important;
+      left: 0.7rem !important;
+
+      &:before{
+        margin: auto;
+      }
+    }
+
+    &.icon-cancel{
+      top: 0.7rem !important;
+      right: 0.7rem !important;
+
+      &:before{
+        margin: auto;
+      }
+    }
+
+  }
+
+  &.no-icon{
+    margin: -8px 0px 14px auto !important;
+    width: 40% !important;
+    height: 33px;
+  }
+
+}
+
+.pagination-client-side{
+  li.active{
+    a{
+      color:$white !important;
+    }
+  }
 }

@@ -15,10 +15,14 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+require('../components');
+
 (function () {
   'use strict';
 
+
   var module = angular.module('app.common', [
+    'app.common.components',
     'app.common.services',
     'app.common.header',
     'app.common.footer',
@@ -41,9 +45,10 @@
     'icgc.common.pcawg',
 
     // Query langauge
-    'icgc.common.pql.translation',
-    'icgc.common.pql.queryobject',
-    'icgc.common.pql.utils'
+    // Note: currently unused in the application
+    // 'icgc.common.pql.translation',
+    // 'icgc.common.pql.queryobject',
+    // 'icgc.common.pql.utils'
   ]);
 
 
@@ -115,7 +120,7 @@
       if (search) {
         text = angular.isArray(text) ? text.join(', ') : text.toString();
         // Shrink extra spaces, restrict to alpha-numeric chars and a few other special chars
-        search = search.toString().replace(/\s+/g, ' ').replace(/[^a-zA-Z0-9:\s\-_\.]/g, '').split(' ');
+        search = search.toString().replace(/\s+/g, ' ').replace(/[^a-zA-Z0-9:,\s\-_\.]/g, '').split(' ');
         for (var i = 0; i < search.length; ++i) {
           text = text.replace(new RegExp(search[i], 'gi'), '^$&$');
         }
@@ -170,6 +175,9 @@
     params = params || {};
     var selfLoadState = { isLoading: !!params.isLoading };
     var contributingLoadStates = _.compact([selfLoadState].concat(params.contributingLoadStates));
+    var isPromise = function (input) {
+      return _.isFunction(input.then);
+    };
 
     var loadState = {
       get isLoading() {
@@ -188,10 +196,14 @@
       removeContributingLoadState: function (loadState) {
         contributingLoadStates = _.without(contributingLoadStates, loadState);
       },
-      loadWhile: function (promise) {
-        invariant(_.isFunction(promise.then), 'loadWhileAsync requires a promise');
+      loadWhile: function (work) {
+        invariant(isPromise(work) || _.isArray(work) && _.every(work, isPromise),
+          'loadWhileAsync requires a promise or an array of promises');
+        var promise = _.isArray(work) ? Promise.all(work) : work;
         loadState.startLoad();
-        return promise.finally(loadState.endLoad);
+        return promise
+          .catch(loadState.endLoad)
+          .then(loadState.endLoad);
       },
       startLoad: function () {
         selfLoadState.isLoading = true;
@@ -301,9 +313,7 @@
       var acc = [];
 
       function page(params) {
-        console.log(resource.route + ' ' + JSON.stringify(params));
         return resource.get('', params).then(function (data) {
-          console.log(data.plain());
           acc = acc.concat(data.hits);
           var pagination = data.pagination;
           if (pagination.page < pagination.pages) {
@@ -370,5 +380,23 @@
       }
     };
   });
+
+  module.filter('subDelimiters', function($interpolate){
+    return function(string, context){
+       string = string.replace(/\[\[/g, '{{').replace(/\]\]/g, '}}');
+      var interpolateFn = $interpolate(string);
+      return interpolateFn(context);
+    };
+  });
+
+  // This is a workaroud required for Internationalization of 'Experimental&nbsp;Strategy'
+  module.filter('replace', function(){
+    return function(string, pattern, replacement){
+      return string.replace(new RegExp(pattern, 'g'), replacement);
+    };
+  });
+
+  module.directive('ngLazyShow', require('./lazy-show'));
+  module.filter('pluralize', () => (...args) => require('pluralize')(...args));
 
 })();
