@@ -36,23 +36,22 @@
 
     function checkSession(succ) {
       user.verifying = true;
-      // get ccc_info
-      var roles = $cookies.get("ccc_search_authorization_roles");
-      if (roles) {
-        _.assign(user, JSON.parse(roles))
-        user.token = 'ccc';
-        var role = _.filter(user.roles,  function(r) { return r.resource.applications[0].name === 'Portal'; })[0];
-        user.ccc_projects = _.reduce(role.resource.search_indexes,
-                            function(result, value, key) {
-                              result.push(value.name);
-                              return result;
-                            }
-                            ,[]);
-        window._whiteListedProjects = user.ccc_projects ;
-
-      }
-      user.verifying = false;
-
+      Settings.get().then(function(settings){
+         if (!settings.authEnabled){
+            user.disabled = true;
+            user.verifying = false;
+            return;
+         }
+         var ohsutoken = $window.localStorage.getItem('ohsutoken');
+         if (ohsutoken) {
+           user.verifying = false;
+           console.log('ohsutoken present');
+           user.token = ohsutoken;
+         }
+         handler.one('verify').get().then(succ, function(){
+           user.verifying = false;
+         });
+      });
     }
 
     function login(data) {
@@ -69,23 +68,16 @@
     function deleteCookies() {
       delete $cookies.dcc_session;
       delete $cookies.dcc_user;
-      //$cookies.remove("ccc_search_authorization_roles")
       Restangular.setDefaultRequestParams({});
+      $window.localStorage.removeItem('ohsutoken');
+      $window.location.reload();
     }
 
     function logout() {
       user.verifying = false;
-      if(user.token !== 'ccc') {
-        handler.post('logout').then(function () {
-          deleteCookies();
-          $window.location.reload();
-        });
-      } else {
+      handler.post('logout').then(function () {
         deleteCookies();
-        Settings.get().then(function(settings) {
-          $window.location = settings.ssoCCC + encodeURIComponent($window.location.href);
-        });
-      }
+      });
     }
 
     function getUser() {
@@ -109,8 +101,6 @@
           redirect(settings.ssoUrl);
         } else if (provider === 'google') {
           redirect(settings.ssoUrlGoogle);
-        }  else if (provider === 'ccc') {
-          redirect(settings.ssoCCC);
         }
       });
     }
@@ -124,6 +114,55 @@
       redirect: redirect
     };
   });
+
+  angular.module('icgc.auth.models').factory('OHSU', function (Restangular, $window, $cookies, Auth) {
+    var handler = Restangular.one('ohsulogin');
+
+    function login(osDomain, osUsername, osPassword) {
+      var credentials = {'domain': osDomain, 'user': osUsername, 'password': osPassword};
+      $window.localStorage.setItem('ohsu-refresh-needed', 'true');
+      return handler.withHttpConfig({
+          transformRequest: function(data) {
+              return JSON.stringify(data);
+          }
+      }).customPOST(credentials, undefined, undefined, {
+          'Content-Type': 'application/json'
+      });
+
+    }
+
+    function logout() {
+      $cookies.ohsulogin_error = undefined;
+      $window.localStorage.removeItem('ohsutoken');
+    }
+
+
+    function getErrors() {
+      return $cookies.ohsulogin_error;
+    }
+
+    function hasErrors() {
+      return !!$cookies.ohsulogin_error;
+    }
+
+    function refreshNeeded() {
+      return $window.localStorage.getItem('ohsu-refresh-needed');
+    }
+
+    function refreshDone() {
+      return $window.localStorage.removeItem('ohsu-refresh-needed');
+    }
+
+    return {
+      login: login,
+      logout: logout,
+      getErrors: getErrors,
+      hasErrors: hasErrors,
+      refreshNeeded: refreshNeeded,
+      refreshDone: refreshDone
+    };
+  });
+
 
   angular.module('icgc.auth.models').factory('OpenID', function (Restangular, $window, $cookies) {
     var handler = Restangular.one('auth/openid');
@@ -153,20 +192,24 @@
   });
 })();
 
+
 (function () {
   'use strict';
 
   angular.module('icgc.auth.controllers', ['icgc.auth.models']);
 
   angular.module('icgc.auth.controllers').controller('authController',
-    function ($window, $scope, $location, $modal, Auth, CUD, OpenID, $state, $stateParams, 
-      PortalFeature, gettextCatalog) {
+    function ($window, $scope, $location, $modal, Auth, CUD, OpenID, $state, $stateParams,
+      PortalFeature, gettextCatalog, OHSU) {
 
       $scope.params = {};
-      $scope.params.provider = 'ccc';
+      $scope.params.provider = 'ohsu';
       $scope.params.error = null;
       $scope.params.user = null;
       $scope.params.openIDUrl = null;
+      $scope.params.osDomain = null;
+      $scope.params.osUsername = null;
+      $scope.params.osPassword = null;
       $scope.params.cudUsername = null;
       $scope.params.cudPassword = null;
       $scope.params.showCollaboratoryToken = PortalFeature.get('AUTH_TOKEN');
@@ -184,6 +227,10 @@
             break;
         }
 
+        if ($scope.params.provider === 'ohsu') {
+          shouldRefresh = true;
+        }
+
         return shouldRefresh;
       }
 
@@ -193,8 +240,10 @@
         if (OpenID.hasErrors()) {
           $scope.params.error = OpenID.getErrors();
           $scope.loginModal = true;
-        }
-        else {
+        } else if (OHSU.hasErrors()) {
+          $scope.params.error = OHSU.getErrors();
+          $scope.loginModal = true;
+        } else {
           Auth.checkSession(
             function (data) {
 
@@ -217,6 +266,10 @@
               // If we are on the homepage (i.e. $state.current.name is falsey) don't bother transitioning...
               if ($state.current.name) {
                 $state.transitionTo($state.current, $stateParams, transitionParams);
+                if (OHSU.refreshNeeded()) {
+                  OHSU.refreshDone();
+                  $window.location.reload();
+                }
               }
 
               $scope.closeLoginPopup();
@@ -299,7 +352,25 @@
       $scope.tryLogin = function () {
         $scope.connecting = true;
 
-        if ( ['icgc', 'google', 'ccc'].indexOf($scope.params.provider) >= 0) {
+        if ( ['ohsu'].indexOf($scope.params.provider) >= 0) {
+          console.log('call ohsu login...');
+          OHSU.login($scope.params.osDomain, $scope.params.osUsername, $scope.params.osPassword)
+            .then(function(response) {
+                console.log('handle ohsulogin ok', response);
+                $window.localStorage.setItem('ohsutoken',response.id_token);
+                Auth.login({token: response.id_token,
+                            username: $scope.params.osUsername});
+                $scope.connecting = false;
+                $scope.params.error = undefined;
+                setup();
+                $scope.closeLoginPopup();
+            }, function(response) {
+                console.log('handle ohsulogin error', response);
+                $window.localStorage.removeItem('ohsutoken');
+                $scope.connecting = false;
+                $scope.params.error = response.data + '(' + response.status + ')';
+            });
+        } else if ( ['icgc', 'google'].indexOf($scope.params.provider) >= 0) {
           CUD.login( $scope.params.provider );
         } else {
           OpenID.provider(providerMap($scope.params.provider)).then(

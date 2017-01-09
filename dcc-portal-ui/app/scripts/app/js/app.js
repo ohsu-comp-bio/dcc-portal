@@ -472,12 +472,12 @@
 
     })
     .run(function($state, $location, $window, $timeout, $rootScope, cfpLoadingBar, HistoryManager, gettextCatalog, Settings) {
-      
+
       // Setting the initial language to English CA.
       gettextCatalog.setCurrentLanguage('en_CA');
 
       HistoryManager.addToIgnoreScrollResetWhiteList(['analysis','advanced', 'compound', 'dataRepositories', 'donor', 'beacon', 'project', 'gene']);
-      
+
       $rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams, error) {
         if(error.status === 404){
           $state.go('404', {page: toState.name, id: toParams.id, url: toState.url}, {location: false});
@@ -731,6 +731,13 @@
         return {
           httpConfig: {cache: false}
         };
+      }
+    });
+
+    RestangularProvider.addFullRequestInterceptor(function (element, operation, route, url, headers, params, httpConfig) {
+      var ohsutoken = window.localStorage.getItem('ohsutoken') ;
+      if (ohsutoken) {
+        return {headers: {'Authorization': 'Bearer ' + ohsutoken}};
       }
     });
 
