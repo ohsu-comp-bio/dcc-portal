@@ -28,7 +28,7 @@
    * - phenotype analysis
    */
   module.controller('NewAnalysisController',
-    function($scope, $modal, $location, $timeout, Page, AnalysisService, Restangular, SetService, Extensions, $q) {
+    function($scope, $modal, $location, $timeout, Page, AnalysisService, Restangular, SetService, Extensions, $q, gettextCatalog) {
 
     var _this = this,
         _isLaunchingAnalysis = false;
@@ -85,8 +85,23 @@
       });
     };
 
+    function clearOncoSelections() {
+     if (_this.selectedIds.indexOf(_this.selectedForOnco.donor) < 0) {
+        _this.selectedForOnco.donor = null;
+      }
+      if (_this.selectedIds.indexOf(_this.selectedForOnco.gene) < 0) {
+        _this.selectedForOnco.gene = null;
+      }
+    }
+
     _this.validForOnco = function(set) {
-      return set.count <= 100;
+      clearOncoSelections();
+
+      var selected = _this.selectedIds.indexOf(set.id) >= 0;
+      var numSelected = _this.selectedIds.length < 2;
+      var correctType = (set.type === 'gene' && set.count <= 100 && _this.selectedForOnco.gene === null) ||
+        (set.type === 'donor' && set.count <= 3000 && _this.selectedForOnco.donor === null);
+      return selected || (numSelected && correctType);
     };
 
     _this.applyFilter = function(type) {
@@ -102,7 +117,7 @@
           }
           return true;
         });
-      } else if (type === 'phenotype') {
+      } else if (type === 'phenotype'){
         _this.filteredList = _.filter(SetService.getAll(), function (set) {
           return set.type === 'donor';
         });
@@ -111,9 +126,7 @@
           return set.type === 'donor' || set.type === 'gene';
         });
       } else {
-        _this.filteredList = _.filter(SetService.getAll(), function (set) {
-          return set.type === 'donor';
-        });
+        console.error(`The requested analysis ${type} doesn't exist!`);
       }
     };
 
@@ -123,6 +136,7 @@
     };
     
     _this.isValidOncoSelection = function() {
+      clearOncoSelections();
       return _this.selectedForOnco.donor !== null && _this.selectedForOnco.gene !== null;
     };
 
@@ -138,7 +152,7 @@
         .post(resourceName, data, {}, {'Content-Type': 'application/json'})
         .then(function(data) {
           if (!data.id) {
-            console.log('Could not retrieve analysis data.id');
+           throw new Error('Could not retrieve analysis data.id', data);
           }
           $location.path(redirectRootPath + data.id);
         })
@@ -164,9 +178,7 @@
       return _launchAnalysis(setIds, 'survival', 'analysis/view/survival/');
     };
     
-    _this.launchOncogridAnalysis = function (setIds) {
-      console.log('Launching OncoGrid with: ' + setIds);
-      
+    _this.launchOncogridAnalysis = function (setIds) {      
       if (_isLaunchingAnalysis) {
         return;
       }
@@ -174,8 +186,8 @@
       _isLaunchingAnalysis = true;
       
       var payload = {
-        donorSet: _this.selectedForOnco.donor,
-        geneSet: _this.selectedForOnco.gene
+        donorSet: setIds.donor,
+        geneSet: setIds.gene
       };
       
       return Restangular
@@ -215,49 +227,37 @@
     }
 
     _this.demoPhenotype = function() {
-      var p1, p2, p3, type = 'donor';
+      var p1, p2, type = 'donor';
       p1 = {
         filters: {
-          donor:{ primarySite: { is: ['Brain'] } }
+          donor:{ primarySite: { is: ['Pancreas'] } },
+          gene: { id: { is: ['ENSG00000133703'] } }
         },
         isTransient: true,
         type: type,
-        name: 'Brain Cancer'
+        name: gettextCatalog.getString('Pancreatic - KRAS mutated ')
       };
-
       p2 = {
         filters: {
-          donor:{ primarySite: { is: ['Breast'] } }
+          donor:{ primarySite: { is: ['Pancreas'] } },
+          gene: { id: { not: ['ENSG00000133703'] } }
         },
         isTransient: true,
         type: type,
-        name: 'Breast Cancer'
-      };
-
-      p3 = {
-        filters: {
-          donor:{ primarySite: { is: ['Colorectal'] } }
-        },
-        isTransient: true,
-        type: type,
-        name: 'Colorectal Cancer'
+        name: gettextCatalog.getString('Pancreatic - KRAS not mutated ')
       };
 
       var demoSetIds = [];
       Page.startWork();
-      SetService.addSet(type, p1).then(function(r1) {
+      SetService.addSet(type, p1).then(function (r1) {
         demoSetIds.push(r1.id);
-        SetService.addSet(type, p2).then(function(r2) {
+        SetService.addSet(type, p2).then(function (r2) {
           demoSetIds.push(r2.id);
-          SetService.addSet(type, p3).then(function(r3) {
-            demoSetIds.push(r3.id);
-
-            function proxyLaunch() {
-              Page.stopWork();
-              _this.launchPhenotype(demoSetIds);
-            }
-            wait(demoSetIds, 7, proxyLaunch);
-          });
+          function proxyLaunch() {
+            Page.stopWork();
+            _this.launchPhenotype(demoSetIds);
+          }
+          wait(demoSetIds, 7, proxyLaunch);
         });
       });
 
@@ -414,7 +414,7 @@
 
           function proxyLaunch() {
             Page.stopWork();
-            _this.launchOncogridAnalysis([r1.id, r2.id]);
+            _this.launchOncogridAnalysis({donor: r1.id, gene: r2.id});
           }
           wait([r1.id, r2.id], 7, proxyLaunch);
       });

@@ -170,7 +170,6 @@
             showInfo();
 
             if (overlaps && node.isPartOfPathway) {
-              //console.log('Overlapping!!' , d.reactomeId, overlaps);
               _.keys(overlaps).forEach(function(dbId) {
                 if (dbId === d.reactomeId) {
                   var overlappingGene = overlaps[dbId];
@@ -179,7 +178,6 @@
                 }
               });
 
-              //console.log('OVERLAPPPING!!!', overlappingGenesList);
               $scope.overlappingGenesList = overlappingGenesList;
               $scope.overlappingGenesMap = overlappingGenesMap;
             }
@@ -234,8 +232,8 @@
             );
 
             annotatedGeneIds.forEach(function (geneId) {
-              var mutatedGene = _.find(mutatedGenesList, function(o) { return o.id === geneId; });
-              var druggableGene = _.find(druggableGenesList, function(o) { return o.id === geneId; });
+              var mutatedGene = _.find(mutatedGenesList, function(o) { return o.id === geneId });
+              var druggableGene = _.find(druggableGenesList, function(o) { return o.id === geneId });
               
               annotatedGenesList.push({
                 id: geneId,
@@ -409,10 +407,7 @@
 
         // Render legend last to ensure all dependencies are initialized. Timeout of 0 does not work in firefox.
         $scope.$on(PathwaysConstants.EVENTS.MODEL_READY_EVENT, function() {
-
-            //var rect = $('.pathway-legend')[0].getBoundingClientRect();
             controller.renderLegend(270, 671);
-
         });
 
         // Needed to fix url paths for SVGs on url change due to <base> tag required by angular

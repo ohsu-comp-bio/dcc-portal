@@ -27,8 +27,8 @@
   });
 
 
-  module.factory('Page', function () {
-    var title = 'Loading...',
+  module.factory('Page', function (gettextCatalog) {
+    var title = gettextCatalog.getString('Loading...'),
       page = 'home',
       error = false,
       working = 0,
@@ -143,24 +143,9 @@
     };
   });
 
-
-  // Prevent the settings service from being requested several times
-  var _settingsPromise = null;
-
-  module.service('Settings', function (RestangularNoCache) {
-
-    this.get = function () {
-
-      if (_settingsPromise) {
-        return _settingsPromise;
-      }
-
-      _settingsPromise = RestangularNoCache.one('settings').get();
-
-      _settingsPromise.then(function () { _settingsPromise = null; });
-
-      return _settingsPromise;
-    };
+  module.service('Settings', function () {
+    Object.freeze(window.ICGC_SETTINGS);
+    this.get = () => Promise.resolve(window.ICGC_SETTINGS);
   });
 
   module.service('ProjectCache', function(Projects) {
@@ -183,44 +168,44 @@
     this.getData = getData;
   });
 
-  module.factory ('RouteInfoService', function ($state, $log) {
+  module.factory ('RouteInfoService', function ($state, $log, gettextCatalog) {
     var href = $state.href;
     var routeInfo = {
       home: {
         href: href ('home'),
-        title: 'Home'
+        title: gettextCatalog.getString('Home')
       },
       projects: {
         href: href ('projects'),
-        title: 'Cancer Projects'
+        title: gettextCatalog.getString('Cancer Projects')
       },
       advancedSearch: {
         href: href ('advanced'),
-        title: 'Advanced Search'
+        title: gettextCatalog.getString('Advanced Search')
       },
       dataAnalysis: {
         href: href ('analysis'), // DCC-4594 default is launch analysis
-        title: 'Data Analysis'
+        title: gettextCatalog.getString('Data Analysis')
       },
       dataReleases: {
         href: href ('dataReleases'),
-        title: 'DCC Data Releases'
+        title: gettextCatalog.getString('DCC Data Releases')
       },
       dataRepositories: {
         href: href ('dataRepositories'),
-        title: 'Data Repositories'
+        title: gettextCatalog.getString('Data Repositories')
       },
       pcawg: {
         href: href ('pancancer'),
-        title: 'PCAWG'
+        title: gettextCatalog.getString('PCAWG')
       },
       dataRepositoryFile: {
         href: href ('dataRepositoryFile'),
-        title: 'File'
+        title: gettextCatalog.getString('File')
       },
       drugCompound: {
         href: href ('compound'),
-        title: 'Compound'
+        title: gettextCatalog.getString('Compound')
       }
     };
 
@@ -239,20 +224,22 @@
   /**
   * Centralized location for tooltip text
   */
-  module.service('TooltipText', function() {
+  module.service('TooltipText', function(gettextCatalog) {
     this.ENRICHMENT = {
-      OVERVIEW_GENES_OVERLAP: 'Intersection between genes involved in Universe and input genes.',
-      INPUT_GENES: 'Number of genes resulting from original query with upper limit. <br>' +
-        'Input genes for this enrichment analysis result.',
-      FDR: 'False Discovery Rate',
-      GENESET_GENES: 'Number of genes involved in this gene set.',
-      GENESET_GENES_OVERLAP: 'Intersection between genes involved in this gene set and input genes.',
-      GENESET_DONORS: 'Number of donors filtered by genes in overlap',
-      GENESET_MUTATIONS: 'Number of simple somatic mutations filtered by genes in overlap.',
+      OVERVIEW_GENES_OVERLAP: gettextCatalog.getString('Intersection between genes involved in Universe and input' +
+        ' genes.'),
+      INPUT_GENES: gettextCatalog.getString('Number of genes resulting from original query with upper limit. <br>' +
+        'Input genes for this enrichment analysis result.'),
+      FDR: gettextCatalog.getString('False Discovery Rate'),
+      GENESET_GENES: gettextCatalog.getString('Number of genes involved in this gene set.'),
+      GENESET_GENES_OVERLAP: gettextCatalog.getString('Intersection between genes involved in this gene set and' + 
+        ' input genes.'),
+      GENESET_DONORS: gettextCatalog.getString('Number of donors filtered by genes in overlap'),
+      GENESET_MUTATIONS: gettextCatalog.getString('Number of simple somatic mutations filtered by genes in overlap.'),
       // GENESET_EXPECTED: 'Number of genes expected by chance',
-      GENESET_EXPECTED: 'Number of genes in overlap expected by chance',
-      GENESET_PVALUE: 'P-Value using hypergeometric test',
-      GENESET_ADJUSTED_PVALUE: 'Adjusted P-Value using the Benjamini-Hochberg procedure'
+      GENESET_EXPECTED: gettextCatalog.getString('Number of genes in overlap expected by chance'),
+      GENESET_PVALUE: gettextCatalog.getString('P-Value using hypergeometric test'),
+      GENESET_ADJUSTED_PVALUE: gettextCatalog.getString('Adjusted P-Value using the Benjamini-Hochberg procedure')
     };
   });
 
@@ -266,7 +253,7 @@
       var _lookup = {};
 
       var _retrieve = function ( id ) {
-        return _lookup [id];
+        return _lookup[id];
       };
       var _echoOrDefault = function ( value, defaultValue ) {
         return ( value ) ?
@@ -278,7 +265,7 @@
 
       this.put = function ( id, name ) {
         if ( id && name ) {
-          _lookup [id + ''] = name + '';
+          _lookup[id + ''] = name + '';
 
           $log.debug ( 'Updated lookup table is:' + JSON.stringify (_lookup) );
         }
@@ -338,6 +325,25 @@
       }
 
     };
-  });
 
+    this.exportDataUri = (name, uri) => {
+      if (navigator.msSaveOrOpenBlob) {
+        navigator.msSaveOrOpenBlob(uriToBlob(uri), name);
+      } else {
+        var saveLink = document.createElement('a');
+        var downloadSupported = 'download' in saveLink;
+        if (downloadSupported) {
+          saveLink.download = name;
+          saveLink.href = uri;
+          saveLink.style.display = 'none';
+          document.body.appendChild(saveLink);
+          saveLink.click();
+          document.body.removeChild(saveLink);
+        }
+        else {
+          window.open(uri, '_temp', 'menubar=no,toolbar=no,status=no');
+        }
+      }
+    };
+  });
 })();

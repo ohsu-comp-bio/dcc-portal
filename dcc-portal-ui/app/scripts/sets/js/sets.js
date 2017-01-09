@@ -33,13 +33,13 @@
   var module = angular.module('icgc.sets.controllers', []);
 
   module.controller('SetUploadController',
-    function($scope, $modalInstance, $timeout, LocationService, SetService, Settings, 
-               setType, setLimit, setUnion, selectedIds) {
+    function($scope, $rootScope, $modalInstance, $timeout, LocationService, SetService, Settings, 
+      setType, setLimit, setUnion, selectedIds, FiltersUtil, FilterService, $filter, 
+      CompoundsService, GeneSymbols, SetNameService) {
 
     $scope.setLimit = setLimit;
     $scope.isValid = false;
-
-
+    
     // Input data parameters
     $scope.params = {};
     $scope.params.setName = '';
@@ -60,13 +60,12 @@
 
       params.type = $scope.params.setType;
       params.name = $scope.params.setName;
-      params.description = $scope.params.setDescription;
       params.size = $scope.params.setSize;
 
       if (angular.isDefined($scope.params.setLimit)) {
         params.filters = LocationService.filters();
 
-        sortParam = LocationService.getJsonParam($scope.setType + 's');
+        sortParam = LocationService.getJqlParam($scope.setType + 's');
 
         if (angular.isDefined(sortParam)) {
           params.sortBy = sortParam.sort;
@@ -82,9 +81,13 @@
       }
 
       if (angular.isDefined($scope.params.setLimit)) {
-        SetService.addSet(setType, params);
+        SetService.addSet(setType, params).then((set) => {
+          $rootScope.$broadcast(SetService.setServiceConstants.SET_EVENTS.SET_ADD_EVENT, set);
+        });
       } else {
-        SetService.addDerivedSet(setType, params);
+        SetService.addDerivedSet(setType, params).then((set) => {
+          $rootScope.$broadcast(SetService.setServiceConstants.SET_EVENTS.SET_ADD_EVENT, set);
+        });
       }
 
       // Reset
@@ -92,11 +95,10 @@
     };
 
     $scope.submitNewExternalSet = function() {
-      var params = {}, sortParam;
+      var params = {};
 
       params.type = $scope.params.setType;
       params.name = $scope.params.setName;
-      params.description = $scope.params.setDescription;
       params.size = $scope.params.setSize;
       params.sortBy = 'fileName';
 
@@ -107,8 +109,6 @@
           // Only used for files
           _.set (params.filters, 'file.id.is',  $scope.params.selectedIds);
         }
-        
-        sortParam = LocationService.getJsonParam($scope.setType + 's');
       }
 
       if (angular.isDefined($scope.params.setUnion)) {
@@ -116,7 +116,9 @@
       }
 
       if (angular.isDefined($scope.params.setLimit)) {
-        SetService.addExternalSet(setType, params);
+        SetService.addExternalSet(setType, params).then((set) => {
+          $rootScope.$broadcast(SetService.setServiceConstants.SET_EVENTS.SET_ADD_EVENT, set);
+        });
       }
 
       // Reset
@@ -151,12 +153,19 @@
       $scope.isValid = true;
     };
 
+    function updateSetName(){
+      return SetNameService.getSetFilters()
+        .then(filters => SetNameService.getSetName(filters, $scope.params.setType))
+        .then(setName => {
+          $scope.params.setName = setName;
+        });
+    }
 
     // Start. Get limit restrictions from the server side
     Settings.get().then(function(settings) {
       $scope.params.setSize = Math.min($scope.setLimit || 0, settings.maxNumberOfHits);
       $scope.params.setSizeLimit = $scope.params.setSize;
-      $scope.params.setName = 'My ' + setType + ' set';
+      updateSetName();
       $timeout(function () {
         $scope.params.isLoading = false;
         $scope.validateInput();
@@ -187,13 +196,13 @@
       },
       template: '<div>' +
         '(<span data-ng-repeat="setId in item.intersection">' +
-        ' {{getName(setId)}} ' +
+        ' <span data-ng-bind-html="getName(setId)"></span> ' +
         '<span data-ng-if="!$last" class="set-symbol">&cap;</span>' +
         '</span>)' +
         '<span data-ng-if="item.exclusions.length > 0" class="set-symbol"> &minus; </span>' +
         '<span data-ng-if="item.exclusions.length > 0">(</span>' +
         '<span data-ng-repeat="setId in item.exclusions">' +
-        ' {{getName(setId)}} ' +
+        ' <span data-ng-bind-html="getName(setId)"></span> ' +
         '<span data-ng-if="!$last" class="set-symbol">&cup;</span>' +
         '</span>' +
         '<span data-ng-if="item.exclusions.length > 0">)</span>' +
@@ -248,7 +257,6 @@
         }
 
         function wait(id, numTries, callback) {
-          console.log('trying .... ', numTries);
           if (numTries <= 0) {
             Page.stopWork();
             return;
@@ -330,7 +338,7 @@
               templateUrl: '/scripts/downloader/views/request.html',
               controller: 'DownloadRequestController',
               resolve: {
-                filters: function() { return {donor:{id:{is:[Extensions.ENTITY_PREFIX + data.id]}}}; }
+                filters: function() { return {donor:{id:{is:[Extensions.ENTITY_PREFIX + data.id]}}} }
               }
             });
           });
@@ -359,8 +367,7 @@
           SetService.materializeSync(type, params).then(function(data) {
             Page.stopWork();
             if (! data.id) {
-              console.log('there is no id!!!!');
-              return;
+              throw new Error('The set id was not found!', data);
             } else {
               var newFilter = JSON.stringify(filterTemplate(data.id));
               $location.path (dataRepoUrl).search ('filters', newFilter);
@@ -493,7 +500,7 @@
             return $filter('number')(val);
           },
           setLabelFunc: function(id) {
-            return SetOperationService.getSetShortHand(id, $scope.setList);
+            return $scope.setList.indexOf(id) + 1;
           }
         };
 
@@ -518,6 +525,7 @@
 
              // Because SVG urls are based on <base> tag, we need absolute path
             config.urlPath = $location.url();
+            config.setLabelFunc = id => SetOperationService.getSetShortHandSVG(id, _.map(results, 'id'));
 
             vennDiagram = new dcc.Venn23($scope.vennData, config);
             vennDiagram.render( $element.find('.canvas')[0]);

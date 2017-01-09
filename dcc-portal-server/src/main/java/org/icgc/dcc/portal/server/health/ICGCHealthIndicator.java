@@ -19,7 +19,7 @@ package org.icgc.dcc.portal.server.health;
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static org.icgc.dcc.common.client.api.daco.DACOClient.UserType.CUD;
 
-import org.icgc.dcc.portal.server.service.AuthService;
+import org.icgc.dcc.portal.server.security.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.actuate.health.AbstractHealthIndicator;
 import org.springframework.boot.actuate.health.Health.Builder;
@@ -50,10 +50,12 @@ public class ICGCHealthIndicator extends AbstractHealthIndicator {
     val token = authService.getAuthToken();
     if (isNullOrEmpty(token)) {
       builder.down().withDetail("message", "Token empty").build();
+      return;
     }
 
     if (!authService.hasDacoAccess(DACO_ENABLED_CUD_USER, CUD)) {
       builder.down().withDetail("message", "Invalid DACO account").build();
+      return;
     }
 
     builder.up().withDetail("message", "CUD and DACO valid").build();

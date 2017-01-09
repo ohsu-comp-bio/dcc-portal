@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.icgc.dcc</groupId>
     <artifactId>dcc-portal</artifactId>
-    <version>4.3.8-SNAPSHOT</version>
+    <version>4.3.25-SNAPSHOT</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
@@ -86,7 +86,7 @@
           </execution>
         </executions>
       </plugin>
-      
+
       <!-- Delegate to UI build -->
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
@@ -94,38 +94,60 @@
         <executions>
           <!-- Compile -->
           <execution>
-            <id>npm-install</id>
-            <phase>prepare-package</phase>
+            <id>yarn-install</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>yarnpkg</executable>
+              <workingDirectory>.</workingDirectory>
+            </configuration>
+          </execution>
+          <execution>
+            <id>bower-install</id>
+            <phase>compile</phase>
             <goals>
               <goal>exec</goal>
             </goals>
             <configuration>
               <executable>npm</executable>
               <arguments>
-                <argument>install</argument>
+                <argument>run</argument>
+                <argument>bower</argument>
               </arguments>
-              <workingDirectory>.</workingDirectory>
             </configuration>
           </execution>
-
-          <!-- Prepare package -->
           <execution>
-            <id>grunt-build</id>
-            <phase>prepare-package</phase>
+            <id>npm-test</id>
+            <phase>compile</phase>
             <goals>
               <goal>exec</goal>
             </goals>
             <configuration>
-              <executable>grunt</executable>
+              <executable>npm</executable>
               <arguments>
+                <argument>test</argument>
+              </arguments>
+            </configuration>
+          </execution>
+          <execution>
+            <id>npm-build</id>
+            <phase>compile</phase>
+            <goals>
+              <goal>exec</goal>
+            </goals>
+            <configuration>
+              <executable>npm</executable>
+              <arguments>
+                <argument>run</argument>
                 <argument>build</argument>
               </arguments>
-              <workingDirectory>.</workingDirectory>
             </configuration>
           </execution>
         </executions>
       </plugin>
-      
+
       <!-- Package -->
       <plugin>
         <artifactId>maven-jar-plugin</artifactId>

@@ -1,14 +1,195 @@
 ICGC DCC - Portal - Change Log
 ===
 
-Change log for the DCC Data Portal
-4.3.6
+Change log for the DCC Data Portal.
+
+[4.3.24](https://github.com/icgc-dcc/dcc-portal/compare/4.3.23...4.3.24)
+--
+- Feature: Added support for recursive download file listing in endpoint in DCC Data Releases
+- Enhancement: Added instructions in Repository Browser modals
+- Enhancement: Added polyfill.io for older browsers
+- Enhancement: Added compression to API endpoints
+- Fix: Remove one-time binding for Enrichment Analysis
+- Build: Using `yarn` for dependency management
+- Build: Make eslint extension agnostic
+- Refactor: A bit of cleanup for gene set logic
+
+[4.3.23](https://github.com/icgc-dcc/dcc-portal/compare/4.3.22...4.3.23)
+--
+- Bugfix: Race condition with cleanup in Saved Results
+- Bugfix: Deactivating infinite scroll if there are no results
+- Bugfix: Creating custom gene set should show up right away in the table
+- Bugfix: Adds null check for returned entity set in phenotype analyzer
+- Bugfix: Update copyright year on build
+- Bugfix: Display only specific user token if user has multiple accounts
+
+[4.3.22](https://github.com/icgc-dcc/dcc-portal/compare/4.3.21...4.3.22)
+--
+- Site: Remove uppercase transform and separator on action toolbar
+- Site: Help icon changed to question circle icon
+- Sets: Getting the set name based on the filter
+- Sets: Names now includes filter values
+- Entity Tables: Text wrapping long set name into new lines
+- Launch Cohort Analysis from AS and Project page
+- AS: Resetting the tables pagination on filter change based on the tab
+- AS: Added OncoGrid to AS page for Donors and Genes tables.
+- Token Manager: Conditionally show “days” in “Expires in” column
+- OncoGrid: Adding mutation ID to crosshair tooltip
+- OncoGrid: Fixed regression for set name change with demo	
+- Survival Analysis: Show overall and disease free survival graphs side
+- Donor: Add biomarker and surgery to model
+- Genome Viewer: Account for zoom when getting start and end of mutation track
+
+[4.3.21](https://github.com/icgc-dcc/dcc-portal/compare/4.3.20...4.3.21)
+--
+- Add oncogrid to advanced search 
+- Survival layout improvements
+- Files endpoint can use field param
+- Legend on OncoGrid
+- Have webpack dev server proxy to production api based on process.env
+- Fix scrolling on pagination
+- Handle error when creating token
+- Add message for expired tokens instead of showing negative time 
+- Reset pagination on filter change / pagination change
+- Fix: A "id" to field mapping for file search
+- Add "View in Data Repository" link in Projects page
+- Add ‘drag to zoom’ prompt in Survival Analysis
+- Fix: Missing version from oncogrid analysis table schema
+- `RepositorySearchService` refactoring in UI to use new `/repositories` endpoint
+- Fix: Add guard against no intervals in survival analysis
+- Change header to "Mutation ID" instead of "ID" in AS mutation TSV download
+- Fix: On auth server failure, portal will return a 502 bad gateway
+- Don't destroy and recreate analysis results when switching tabs
+- Add other useful npm scripts to readme
+- Improvements to protein response, api, and code.
+- Remove unused UI code and files
+- Move genome-viewer dependencies to own module and lazy load on demand
+
+[4.3.20](https://github.com/icgc-dcc/dcc-portal/compare/4.3.19...4.3.20)
+--
+- Removed notes from saved sets
+- Removed primary load indicator when refreshing Advanced Search or Projects page
+- Bugfix: Saving sets in different tabs overwrite sets saved in other tabs
+- Bugfix: Uploading donor set in Repository Browser uses correct prefix
+- Improvement: Prevent hard page refresh on filter change in Repository Browser
+- Improvement: Changing query in AS should reset pagination
+- Use subscripts on set identifiers
+- Allow updating set names
+- Enforce npm / node versions in build
+- Elliding sequences in Gene page when too long
+- Additional parameter checking in REST endpoints
+- `TermsLookupService` refactoring
+- Fixed display of Analysis Result page
+- Fixed Collaboratory button URL
+- Fixed border rendering in AS hits table
+
+[4.3.19](https://github.com/icgc-dcc/dcc-portal/compare/4.3.18...4.3.19)
+--
+- Remove “notes” from saved sets
+- Null check for cookies before attempting to get session token
+- More information in exception emails
+- Null check on donorIds for processing a donor set
+- Bubbles up a 403 from the auth server on bad token scope
+
+[4.3.18](https://github.com/icgc-dcc/dcc-portal/compare/4.3.17...4.3.18)
+--
+- Added support for injecting settings into <portal-settings></portal-settings> as window.ICGC_SETTINGS js object
+- Added support for externalizign Google Analytics account ID
+- Removed grunt
+- Oncogrid zoom selection fix for right to left
+- Showing loading blocks for Projects Details tab
+- Added back publications section
+- Refactoring of `IndexModel` to be leaner and more cohesive
+- Server FindBug fixes and improvements to code clarity
+- Fixed JS errors on tooltips
+- Migrated jQuery from Bower to NPM
+
+[4.3.17](https://github.com/icgc-dcc/dcc-portal/compare/4.3.16...4.3.17)
+--
+- Fixed API setting of Functional Impact on the consequence if provided
+- Fixed ability to deselect Cancer Gene Census in Advanced Search
+- Fixed sorting of Cancer Distribution table columns
+
+[4.3.16](https://github.com/icgc-dcc/dcc-portal/compare/4.3.15...4.3.16)
+--
+- Added support for mirroring customization
+- Fixed missing filter on table links in Gene Page to Advanced Search
+
+[4.3.15](https://github.com/icgc-dcc/dcc-portal/compare/4.3.14...4.3.15)
+--
+- Added 404 page for entities and unknown pages
+- Added human readable saved set names
+
+[4.3.14](https://github.com/icgc-dcc/dcc-portal/compare/4.3.13...4.3.14)
+--
+- Fixed missing tokens / scopes when using ICGC.org logins
+- Updated Browser Update library configuration
+- Fixed bug with functional impact in summary on mutation page
+- Refactored Phenotype Analyzer based on PR feedback
+
+[4.3.13](https://github.com/icgc-dcc/dcc-portal/compare/4.3.12...4.3.13)
+--
+- Table filters added to entity pages
+- VCF IOBIO statistics show user friendly message when file not available
+- 'Files' section added to Donors entity page
+- Dynamically setting name for saving a entity set
+- 'Loading Files..' spinner added to repositories page
+- Bug fixes
+
+[4.3.12](https://github.com/icgc-dcc/dcc-portal/compare/4.3.11...4.3.12)
+--
+- Fixes regression for launching Oncogrid demo.
+- Always download manifest as tarball
+- Using HttpServletResponse to render manifests
+- Detailed logging for manifest query/response
+- Bug fixes
+
+[4.3.11](https://github.com/icgc-dcc/dcc-portal/compare/4.3.10...4.3.11)
+--
+- Fixes regression for launching Survival Analysis demo. 
+- Don’t open manifest downloads in new tab, always download tarball
+- Now using HttpServletResponse to render manifests in order to eagerly commit status code and content disposition for user agents
+- Fixed issues with manifest generation when unique selected and using individually selected files
+- Fixed other UI issues related to manifest generation
+
+[4.3.10](https://github.com/icgc-dcc/dcc-portal/compare/4.3.9...4.3.10)
+--
+- Added ability to filter by compounds in Advanced Search
+- Added p-value calculations for Survival Analysis
+- Added ability to launch OncoGrid from Project page
+- Added ability in manifest dialog to include duplicates
+- Added support for `icgc-get` in Repository Browser
+- Changed Survival Analysis button to perform reset instead of undo
+- Fixed hidden close button in pathway viewer legend
+- Fixed text-wrapping issues
+- Fixed token manager to not error on unknown scopes
+
+[4.3.9](https://github.com/icgc-dcc/dcc-portal/compare/4.3.8...4.3.9)
+--
+- Fixed regression from Spring Boot upgrade: now ensures "_missing" count is present in response json, even when `null`
+
+[4.3.8](https://github.com/icgc-dcc/dcc-portal/compare/4.3.7...4.3.8)
+--
+- Upgraded to Spring Boot `1.4.0-RELEASE` and added custom `FailureAnalyzer`s for Elasticsearch, etc.
+- Bug fix for missing data in sample/specimen table when in a Donor Entity Page.
+- Bug fix for exporting Files table to a file. 
+- OncoGrid shows "Not Verified" for donors with missing diagnosis. 
+- i18n implementation for Portal
+- Bug fixes for alignment and text wrap issues
+
+[4.3.7](https://github.com/icgc-dcc/dcc-portal/compare/4.3.6...4.3.7)
+--
+- Removed software page and moved to [docs](http://docs.icgc.org/software/binaries/).
+
+[4.3.6](https://github.com/icgc-dcc/dcc-portal/compare/4.3.5...4.3.6)
 --
   - Added icgc-get modal for file manifests page, currently behind a feature flag
   - OncoGrid shows spinner while loading
 
-4.3.5
+[4.3.5](https://github.com/icgc-dcc/dcc-portal/compare/4.3.4...4.3.5)
 --
+  -  Made information table in pathway viewer sortable
+  -  Added mutation annotations to nodes, information table, and legend in pathway viewer
   -  Added exception mapper for 503 errors
   -  'Download unavailable' message while the service is down for maintenance 
   -  angular-animate and angular-cookies version update
@@ -25,12 +206,12 @@ Change log for the DCC Data Portal
   - Updates to OncoGrid rendering so that it does not block sidebar animations in analysis page
   - Bug fix for File Repository summary numbers. Increased maximum number of term buckets to 300,000
 
-4.3.4
+[4.3.4](https://github.com/icgc-dcc/dcc-portal/compare/4.3.3...4.3.4)
 --
   - Removed Publication section from Cancer projects
   - Cleanup of unused feature flags and associated logic
 
-4.3.3
+[4.3.3](https://github.com/icgc-dcc/dcc-portal/compare/4.3.2...4.3.3)
 --
   - Added .settings to `dcc-portal-server`
   - Add option to use prod API for UI dev
@@ -42,18 +223,18 @@ Change log for the DCC Data Portal
   - Layout and feature updates for manifest download modal
   - Changed bower dependency on `angularjs` to `angular`, fixes intermittent build errors.
   
-4.3.2
+[4.3.2](https://github.com/icgc-dcc/dcc-portal/compare/4.3.1...4.3.2)
 --
   - Migration of files from `dcc-portal-api` to `dcc-portal-server`
   - URL encoding fixes
   - Enhanced command line running using `mvn spring-boot:run`
   - Simplified classpath resolution of static files
 
-4.3.1
+[4.3.1](https://github.com/icgc-dcc/dcc-portal/compare/4.3.0...4.3.1)
 --
   - Hox fix for `OncoGridResource` not extending from `Resource`
 
-4.3.0
+[4.3.0](https://github.com/icgc-dcc/dcc-portal/compare/4.2.12...4.3.0)
 --
   - Migration to Spring Boot
 
