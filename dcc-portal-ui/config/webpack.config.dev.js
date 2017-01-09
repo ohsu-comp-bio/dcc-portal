@@ -22,6 +22,7 @@ module.exports = {
     path: paths.appBuild,
     pathinfo: true,
     filename: 'static/js/[name].js',
+    // On openstack, this path needs to match the external IP and port
     publicPath: 'http://local.dcc.icgc.org:9000/',
   },
   resolve: {
@@ -59,6 +60,10 @@ module.exports = {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
+            {
+              search: '\<branding-settings\>\<\/branding-settings\>',
+              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>``
+            }
           ]
         }
       },

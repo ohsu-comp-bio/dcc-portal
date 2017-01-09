@@ -23,7 +23,9 @@
   angular.module('app.common.footer.controllers', []);
 
   angular.module('app.common.footer.controllers').controller('FooterCtrl',
-    function ($scope, $http, PortalFeature, RouteInfoService, gettextCatalog) {
+
+    function ($scope, $http, PortalFeature, RouteInfoService, gettextCatalog, Branding) {
+
     var _ctrl = this;
 
     $http.get('/api/version').success(function(data) {
@@ -42,7 +44,7 @@
           ];
 
     $scope.portalFeature = PortalFeature;
-
+    $scope.branding = Branding;
     $scope.stagedFeatures = {
       getCloudLinks: function() {
         return cloudLinks;

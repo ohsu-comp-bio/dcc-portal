@@ -653,6 +653,8 @@
     ]
   });
 
+  module.constant('Branding',window.$ICGC_BRANDING);
+
   module.controller('AppCtrl', function ($scope, Page, Settings) {
     var _ctrl = this;
     _ctrl.appLoaded = true;

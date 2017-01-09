@@ -4,4 +4,7 @@ app/styles/bootstrap.css
 report/
 app/scripts/common/js/pql/pqlparser.js
 target/
+test-bower*
+config/CUSTOM_BRANDING.js
 translations/*.mo
+
