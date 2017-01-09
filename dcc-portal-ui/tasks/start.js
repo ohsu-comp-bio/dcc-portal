@@ -168,7 +168,7 @@ function runDevServer(port) {
       },
       '/(scripts|styles|vendor|bower_components)/**': {
         // On openstack this needs to be '0.0.0.0' and matching the external port
-        target: 'http://localhost:9000/app',
+        target: 'http://localhost:'+DEFAULT_PORT+'/app',
         secure: false,
       },
     },
