@@ -1,7 +1,7 @@
 FROM node:6.9.4
 
-ONBUILD ARG NODE_ENV
-ONBUILD ENV NODE_ENV $NODE_ENV
+#ONBUILD ARG NODE_ENV
+#ONBUILD ENV NODE_ENV $NODE_ENV
 
 RUN mkdir -p /usr/src/app/dcc-portal-ui
 WORKDIR /usr/src/app
@@ -10,14 +10,14 @@ COPY .eslintrc.json /usr/src/app
 
 WORKDIR /usr/src/app/dcc-portal-ui
 
-# COPY dcc-portal-ui/package.json /usr/src/app/dcc-portal-ui
 COPY dcc-portal-ui/ /usr/src/app/dcc-portal-ui
+
 RUN npm install
 
-EXPOSE 8000 9000
+EXPOSE 80 8000 9000
 
-ENV API_SOURCE http://10.96.11.96:8000
-ENV PORT 8000
+#ENV API_SOURCE http://api:8000/v0/files
+#ENV PORT 80
 
 RUN apt-get update
 RUN apt-get install curl
@@ -28,6 +28,7 @@ RUN apt-get install -y apt-transport-https ca-certificates
 RUN apt-get update && apt-get install yarn
 
 RUN echo '{ "allow_root": true }' > /root/.bowerrc
+RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/node
 
 RUN yarn
 RUN npm run bower
