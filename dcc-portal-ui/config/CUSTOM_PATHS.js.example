@@ -14,5 +14,5 @@ module.exports = {
   bowerModules: resolveApp('app/bower_components'),
   internalVendorModules: resolveApp('app/vendor'),
   ownNodeModules: resolveApp('node_modules'),
-  spinner: "/styles/images/icgc-logo.png"
+  spinner: "/styles/images/ohsu-logo.png"
 };
