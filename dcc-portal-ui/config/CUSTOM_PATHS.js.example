@@ -13,5 +13,6 @@ module.exports = {
   appNodeModules: resolveApp('node_modules'),
   bowerModules: resolveApp('app/bower_components'),
   internalVendorModules: resolveApp('app/vendor'),
-  ownNodeModules: resolveApp('node_modules')
+  ownNodeModules: resolveApp('node_modules'),
+  spinner: "/styles/images/icgc-logo.png"
 };
