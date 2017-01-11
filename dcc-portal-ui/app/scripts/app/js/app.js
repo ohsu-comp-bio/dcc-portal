@@ -737,7 +737,9 @@
     RestangularProvider.addFullRequestInterceptor(function (element, operation, route, url, headers, params, httpConfig) {
       var ohsutoken = window.localStorage.getItem('ohsutoken') ;
       if (ohsutoken) {
-        return {headers: {'Authorization': 'Bearer ' + ohsutoken}};
+        var myHeaders = headers || {};
+        myHeaders['Authorization'] = 'Bearer ' + ohsutoken;
+        return {headers: myHeaders};
       }
     });
 
