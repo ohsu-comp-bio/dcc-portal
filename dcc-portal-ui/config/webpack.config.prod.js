@@ -50,6 +50,10 @@ module.exports = {
         query: {
           multiple: [
             {
+              search: '\<portal-settings\>\<\/portal-settings\>',
+              replace: `<script>window.ICGC_SETTINGS = ${JSON.stringify(require('./ICGC_SETTINGS.dev.js'))}</script>`
+            },
+            {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
