@@ -3,7 +3,8 @@ var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
-var paths = require('./paths');
+var paths = require('./ICGC_PATHS');
+// var paths = require('./CUSTOM_PATHS');
 
 module.exports = {
   bail: true,
@@ -52,6 +53,15 @@ module.exports = {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
+            {
+              search: '\'SPINNER\'',
+              replace: paths.spinner
+            },
+            {
+              search: '\<branding-settings\>\<\/branding-settings\>',
+              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>`
+//              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./CUSTOM_BRANDING.js'))}</script>`
+            }
           ]
         }
       },

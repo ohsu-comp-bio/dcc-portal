@@ -47,8 +47,8 @@ import './file-finder';
   /**
    * ICGC static repository controller
    */
-  module.controller('ICGCRepoController', function($scope, $stateParams, Restangular, FileService,
-    ProjectCache, API, Settings, Page, RouteInfoService) {
+  module.controller('ICGCRepoController', function($scope, $stateParams, $window, Restangular, 
+    FileService, ProjectCache, API, Settings, Page, RouteInfoService) {
     var _ctrl = this;
     var dataReleasesRouteInfo = RouteInfoService.get ('dataReleases');
 
@@ -62,6 +62,9 @@ import './file-finder';
     _ctrl.downloadEnabled = true;
     _ctrl.dataReleasesTitle = dataReleasesRouteInfo.title;
     _ctrl.dataReleasesUrl = dataReleasesRouteInfo.href;
+
+    _ctrl.isSafari = /Safari/.test($window.navigator.userAgent);
+    _ctrl.isChrome = /Chrome/.test($window.navigator.userAgent);
 
     _ctrl.fileQuery = '';
     _ctrl.handleFileQueryKeyup = ($event) => {
@@ -695,7 +698,7 @@ import './file-finder';
         maxPadding: 0.01,
         labels: {
           formatter: function () {
-            return this.value / 1000 + 'k';
+            return this.value > 1000 ? this.value / 1000 + 'k' : this.value ;
           }
         },
         lineWidth: 1,
@@ -1141,7 +1144,7 @@ import './file-finder';
       }
     });
 
-    $rootScope.$on(SetService.setServiceConstants.SET_EVENTS.SET_ADD_EVENT, () => {
+    $rootScope.$on(SetService.setServiceConstants.SET_EVENTS.SET_CHANGE_EVENT, () => {
       _ctrl.donorSets = _ctrl.donorSetsForRepo();
       _ctrl.fileSets = _.cloneDeep(SetService.getAllFileSets());
     });
