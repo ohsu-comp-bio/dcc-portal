@@ -6,5 +6,6 @@ app/scripts/common/js/pql/pqlparser.js
 target/
 test-bower*
 config/CUSTOM_BRANDING.js
+config/CUSTOM_PATHS.js
 translations/*.mo
 
