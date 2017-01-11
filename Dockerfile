@@ -16,8 +16,6 @@ RUN npm install
 
 EXPOSE 80 8000 9000
 
-#ENV API_SOURCE http://api:8000/v0/files
-#ENV PORT 80
 
 RUN apt-get update
 RUN apt-get install curl

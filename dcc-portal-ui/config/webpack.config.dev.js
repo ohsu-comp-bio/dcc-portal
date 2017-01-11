@@ -2,7 +2,8 @@ var path = require('path');
 var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
-var paths = require('./paths');
+var paths = require('./ICGC_PATHS');
+// var paths = require('./CUSTOM_PATHS');
 
 module.exports = {
   devtool: process.env.SOURCE_MAP ? process.env.SOURCE_MAP : 'eval-source-map',
@@ -59,6 +60,10 @@ module.exports = {
             {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
+            },
+            {
+              search: '\'SPINNER\'',
+              replace: paths.spinner
             },
             {
               search: '\<branding-settings\>\<\/branding-settings\>',

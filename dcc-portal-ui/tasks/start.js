@@ -1,6 +1,7 @@
 'use strict';
 
-process.env.NODE_ENV = 'development';
+// process.env.NODE_ENV = 'development';
+process.env.NODE_ENV = 'production';
 
 var path = require('path');
 var chalk = require('chalk');
@@ -10,7 +11,8 @@ var execSync = require('child_process').execSync;
 var opn = require('opn');
 var detect = require('./utils/detectPort');
 var prompt = require('./utils/prompt');
-var config = require('../config/webpack.config.dev');
+// var config = require('../config/webpack.config.dev');
+var config = require('../config/webpack.config.prod');
 
 // Tools like Cloud9 rely on this
 var DEFAULT_PORT = process.env.PORT || 9000;
