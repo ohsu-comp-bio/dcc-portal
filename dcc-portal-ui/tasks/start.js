@@ -13,9 +13,43 @@ var detect = require('./utils/detectPort');
 var prompt = require('./utils/prompt');
 // var config = require('../config/webpack.config.dev');
 var config = require('../config/webpack.config.prod');
+var fs = require('fs');
 
 // Tools like Cloud9 rely on this
 var DEFAULT_PORT = process.env.PORT || 9000;
+
+// capture paths to SSL cert & key
+var KEY_PATH =  process.env.KEY_PATH;
+var CERT_PATH = process.env.CERT_PATH;
+// protect against empty strings
+if (!KEY_PATH || KEY_PATH.length < 1) {
+  KEY_PATH = undefined;
+}
+if (!CERT_PATH || CERT_PATH.length < 1) {
+  CERT_PATH = undefined;
+}
+// if SSL defined, ensure 443 used, not default
+if (KEY_PATH && CERT_PATH && DEFAULT_PORT===9000) {
+  DEFAULT_PORT = 443;
+}
+// setup https configuration
+var HTTPS_CONF = undefined;
+if (KEY_PATH && CERT_PATH) {
+  // ensure paths exist
+  if (!fs.existsSync(KEY_PATH)) {
+    console.log('KEY_PATH env var provided, but ' + KEY_PATH + ' does not exist!');
+    process.exit(1);
+  }
+  if (!fs.existsSync(CERT_PATH)) {
+    console.log('CERT_PATH env var provided, but ' + CERT_PATH + ' does not exist!');
+    process.exit(1);
+  }
+  HTTPS_CONF = {
+    key: fs.readFileSync(KEY_PATH),
+    cert: fs.readFileSync(CERT_PATH),
+  };
+}
+
 var compiler;
 
 // TODO: hide this behind a flag and eliminate dead code on eject.
@@ -174,6 +208,7 @@ function runDevServer(port) {
         secure: false,
       },
     },
+    https: HTTPS_CONF
   }).listen(port, (err, result) => {
     if (err) {
       return console.log(err);
