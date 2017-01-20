@@ -12,9 +12,11 @@ WORKDIR /usr/src/app/dcc-portal-ui
 
 COPY dcc-portal-ui/ /usr/src/app/dcc-portal-ui
 
-RUN npm install
+# copy branding
+COPY dcc-portal-ui/config/CUSTOM_PATHS.js.example /usr/src/app/dcc-portal-ui/config/paths.js
+COPY dcc-portal-ui/config/CUSTOM_BRANDING.js.example /usr/src/app/dcc-portal-ui/config/branding.js
 
-EXPOSE 80 8000 9000
+RUN npm install
 
 
 RUN apt-get update

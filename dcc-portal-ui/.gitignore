@@ -9,3 +9,5 @@ data/users.htpasswd
 config/CUSTOM_BRANDING.js
 config/CUSTOM_PATHS.js
 translations/*.mo
+config/branding.js
+config/paths.js
