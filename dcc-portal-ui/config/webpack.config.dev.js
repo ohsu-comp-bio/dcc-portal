@@ -24,7 +24,7 @@ module.exports = {
     pathinfo: true,
     filename: 'static/js/[name].js',
     // On openstack, this path needs to match the external IP and port
-    publicPath: 'http://local.dcc.icgc.org:9000/',
+    publicPath: 'http://local.dcc.icgc.org/',
   },
   resolve: {
     extensions: ['', '.js', '.json'],

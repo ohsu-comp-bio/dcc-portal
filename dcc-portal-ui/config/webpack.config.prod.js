@@ -3,8 +3,7 @@ var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require('extract-text-webpack-plugin');
 var CopyWebpackPlugin = require('copy-webpack-plugin');
-var paths = require('./ICGC_PATHS');
-// var paths = require('./CUSTOM_PATHS');
+var paths = require('./paths');
 
 module.exports = {
   bail: true,
@@ -50,6 +49,10 @@ module.exports = {
         query: {
           multiple: [
             {
+              search: '\<portal-settings\>\<\/portal-settings\>',
+              replace: `<script>window.ICGC_SETTINGS = ${JSON.stringify(require('./ICGC_SETTINGS.dev.js'))}</script>`
+            },
+            {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
@@ -59,8 +62,7 @@ module.exports = {
             },
             {
               search: '\<branding-settings\>\<\/branding-settings\>',
-              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>`
-//              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./CUSTOM_BRANDING.js'))}</script>`
+             replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./branding.js'))}</script>`
             }
           ]
         }
