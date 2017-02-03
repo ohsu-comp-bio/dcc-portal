@@ -16,8 +16,7 @@
     <li><a href="http://docs.icgc.org/portal/about" target="_blank"><translate>Portal</translate></a></li>
     <li><a href="http://docs.icgc.org/portal/api-endpoints/" target="_blank"><translate>Portal API</translate></a></li>
     <li><a href="http://docs.icgc.org/submission/about" target="_blank"><translate>Submission</translate></a></li>
-   
-    
+
 </ul>
 <ul data-ng-class="{'footer-grid-adjust': ! stagedFeatures.getCloudLinks()}">
     <li class="heading">DCC</li>
@@ -42,12 +41,12 @@
         <a href="http://docs.icgc.org/cloud/guide/" target="_blank"><translate>User Guide</translate></a>
     </li>
 </ul>
-<div class="logo omega"><a href="http://oicr.on.ca/" target="_blank"><img src="/styles/images/OICR2logo.png"></a></div>
+<div class="logo omega"><a href="{{branding.footerLogoImgHref}}" target="_blank"><img src="{{branding.footerLogoImgSrc}}"></a></div>
         </div>
 <div class="footer-caption">
-    <small style="display: block"> &copy; {{COPYRIGHT_YEAR}} <a href="https://icgc.org"><translate>International Cancer Genome Consortium</translate>.</a> 
-        <translate>All Rights reserved.</translate>
-    </small>
+    <small style="display: block"> &copy; {{COPYRIGHT_YEAR}} <a href="{{branding.footerCaptionHref}}"><translate>{{branding.footerCaption}}</translate></a> <translate>All
+        Rights
+        reserved.</translate></small>
     <small style="display: block; line-height: .5rem" data-ng-if="FooterCtrl.portalVersion"><translate>ICGC Data Portal</translate> {{FooterCtrl.portalVersion}} -
         API {{FooterCtrl.apiVersion}} -
         <a href="https://github.com/icgc-dcc/dcc-portal/commit/{{FooterCtrl.portalCommit}}" target="_blank" data-ng-bind="FooterCtrl.portalCommit"></a></small>

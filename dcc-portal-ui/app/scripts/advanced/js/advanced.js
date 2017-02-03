@@ -223,6 +223,8 @@ angular.module('icgc.advanced.controllers', [
                   ) ) {
 
                 _pageUnblockedTime = nowTime;
+
+                Page.stopWork();
               }
 
               serviceObj.service.isFacetsInitialized = true;
@@ -1279,4 +1281,3 @@ angular.module('icgc.advanced.services', [])
       return this.subTab === tab;
     };
   });
-

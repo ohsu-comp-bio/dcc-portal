@@ -24,7 +24,8 @@
 
   angular.module (moduleNamespace, [controllersNamespace]);
   angular.module (controllersNamespace, [])
-    .controller (controllerName, ['RouteInfoService', 'Settings', function (RouteInfoService, Settings) {
+
+    .controller (controllerName, ['RouteInfoService', 'Settings', 'Branding', function (RouteInfoService, Settings, Branding) {
 
     var _ctrl = this;
 
@@ -65,6 +66,8 @@
         return _.assign (result, item);
       }, {});
     });
+
+    _ctrl.branding = Branding;
 
     Settings.get().then(function(setting){
       _ctrl.mirror = setting.mirror;

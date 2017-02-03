@@ -28,7 +28,7 @@
    * - phenotype analysis
    */
   module.controller('NewAnalysisController',
-    function($scope, $modal, $location, $timeout, Page, AnalysisService, Restangular, SetService, Extensions, $q, gettextCatalog) {
+    function($scope, $modal, $location, $timeout, Page, AnalysisService, Restangular, SetService, Extensions, $q, $window, gettextCatalog) {
 
     var _this = this,
         _isLaunchingAnalysis = false;
@@ -38,7 +38,7 @@
     _this.filteredSetType = '';
     _this.selectedIds = [];
     _this.selectedTypes = [];
-    
+
     _this.selectedForOnco = {
       donor: null,
       gene: null
@@ -60,7 +60,7 @@
       }
       _this.applyFilter(_this.analysisType);
     };
-    
+
     _this.toggleOnco = function(setId, setType) {
       if (_this.selectedIds.indexOf(setId) >= 0) {
         _.remove(_this.selectedIds, function(id) {
@@ -69,9 +69,9 @@
       } else {
         _this.selectedIds.push(setId);
       }
-      
+
       _this.selectedForOnco[setType] = setId;
-      
+
       // Apply filer to disable irrelevant results
       if (_this.selectedIds.length === 0) {
         _this.filteredSetType = '';
@@ -110,7 +110,14 @@
         _this.filteredList = _.filter(SetService.getAll(), function(set) {
           return set.type === 'gene' && set.count <= 10000;
         });
-      } else if (type === 'set') {
+      } else if (type === 'wdl') {
+        _this.filteredList = _.filter(SetService.getAll(), function(set) {
+          if (_this.filteredSetType !== '') {
+            return set.type === _this.filteredSetType;
+          }
+          return true;
+        });
+      }  else if (type === 'set') {
         _this.filteredList = _.filter(SetService.getAll(), function(set) {
           if (_this.filteredSetType !== '') {
             return set.type === _this.filteredSetType;
@@ -134,7 +141,7 @@
     _this.isLaunchingAnalysis = function() {
       return _isLaunchingAnalysis;
     };
-    
+
     _this.isValidOncoSelection = function() {
       clearOncoSelections();
       return _this.selectedForOnco.donor !== null && _this.selectedForOnco.gene !== null;
@@ -177,19 +184,21 @@
     _this.launchSurvival = function(setIds) {
       return _launchAnalysis(setIds, 'survival', 'analysis/view/survival/');
     };
-    
-    _this.launchOncogridAnalysis = function (setIds) {      
+
+    _this.launchOncogridAnalysis = function (setIds) {
+      console.log('Launching OncoGrid with: ' + setIds);
+
       if (_isLaunchingAnalysis) {
         return;
       }
 
       _isLaunchingAnalysis = true;
-      
+
       var payload = {
         donorSet: setIds.donor,
         geneSet: setIds.gene
       };
-      
+
       return Restangular
         .one('analysis')
         .post('oncogrid', payload, {}, { 'Content-Type': 'application/json' })
@@ -328,6 +337,9 @@
 
     };
 
+    _this.demoWDL = function() {
+      $window.alert("//TODO - demoWDL");
+    }
     _this.demoEnrichment = function() {
       var filters, type, params;
       filters = {
@@ -359,7 +371,7 @@
         wait([result.id], 5, proxyLaunch);
       });
     };
-    
+
     _this.demoOncogrid = function () {
       var donorSetParams = {
         filters: {
@@ -379,7 +391,7 @@
         isTransient: true,
         name: 'Top 75 PCAWG Liver Donors'
       };
-      
+
       var geneSetParams = {
         filters: {
           donor:{
@@ -419,6 +431,33 @@
           wait([r1.id, r2.id], 7, proxyLaunch);
       });
     };
+
+    _this.launchWDL = function(setId) {
+      var set = _.filter(_this.filteredList, function(set) {
+        return set.id === setId;
+      })[0];
+      launchWDL(set);
+    };
+
+    function launchWDL(set) {
+      var filters = {
+        gene: {}
+      };
+      filters.gene.id = { is: [Extensions.ENTITY_PREFIX + set.id] };
+
+      $modal.open({
+        templateUrl: '/scripts/wdl/views/wdl.upload.html',
+        controller: 'WDLUploadController',
+        resolve: {
+          geneLimit: function() {
+            return set.count;
+          },
+          filters: function() {
+            return filters;
+          }
+        }
+      });
+    }
 
     _this.launchEnrichment = function(setId) {
       var set = _.filter(_this.filteredList, function(set) {
@@ -466,5 +505,3 @@
     });
   });
 })();
-
-

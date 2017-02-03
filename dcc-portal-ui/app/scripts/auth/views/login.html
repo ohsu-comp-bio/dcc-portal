@@ -3,8 +3,12 @@
      <i class="icon-spinner icon-spin"></i> <translate>Verifying...</translate>
    </span>
    <span data-ng-show="params.user.token && !params.user.verifying">
+     <i data-ng-show="params.user.token === 'ccc' "
+        class="icon-cloud-1 data-missing-available"
+        data-tooltip="CCC authenticated projects {{params.user.ccc_projects}}"
+        data-tooltip-placement="bottom"></i>
       <i data-ng-show="params.user.daco"
-      class="icon-shield data-available"
+         class="icon-shield data-available"
          data-tooltip-placement="bottom"
          data-tooltip="{{'DACO Access Authorized' | translate}}"></i>
       <i data-ng-hide="params.user.daco"
@@ -19,6 +23,7 @@
           class="icon-cloud-1 data-missing"
           data-tooltip="{{'Cloud Access Unauthorized' | translate}}"
           data-tooltip-placement="bottom"></i>
+
 
       <span data-ng-bind="params.user.email"></span>
       <ul class="toolbar">

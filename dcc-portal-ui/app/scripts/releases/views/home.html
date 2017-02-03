@@ -16,23 +16,19 @@
     <section>
         <h3><translate>About Us</translate></h3>
 
-        <p>
-            <translate has-markup>The <a target="_blank" href="http://icgc.org"><i class="icon-external-link"></i>ICGC</a> Data Portal provides tools for visualizing, querying
-            and downloading the data released quarterly by the consortium's member projects.</translate>
-        </p>
+          <p>The OHSU Knight Cancer Institute Data Portal provides tools for visualizing, querying, and downloading molecular and clinical data from OHSU projects together with large-scale public datasets.</p>
 
-        <p><translate has-markup>To access ICGC controlled tier data, please read these <a href="http://docs.icgc.org/portal/access/" target="_blank"><i class="icon-external-link"></i>instructions.</a></translate></p>
+          <p>The Data Portal is developed and maintained by the OHSU Computational Biology team in collaboration with Intel and the Ontario Institute for Cancer Research.</p>
 
-        <p><translate has-markup>New features will be regularly added by the <a href="/team">DCC development team</a>.</translate>
-            <a href="mailto:dcc-support@icgc.org?Subject=Data%20Portal%20Feedback"><i class="icon-mail"></i><translate>Feedback is welcome.</translate></a>
-        </p>
+          <p>The Portal currently contains molecular data on over 16,000 samples from the International Cancer Genome Consortium, and is being actively updated to incorporate additional data from OHSU projects. For questions or requests please contact margolin@ohsu.edu. </p>
+
 
         <div class="divider"></div>
-
         <p>
-         <div class="text-left"><a href="/pcawg" style="background:none"><img id="#pcawg-logo" src="styles/images/PCAWG-final-small.png"></a></div>
-         <translate has-markup>The <a href="/pcawg">Pancancer Analysis of Whole Genomes</a> (PCAWG) study is an international collaboration to identify common patterns of mutation in more than 2,800 cancer whole genomes from the International Cancer Genome Consortium.</translate>
+         <div class="text-left"><a  style="background:none"><img id="#pcawg-logo" src="styles/images/knight-logo.png"></a></div>
+
         </p>
+
     </section>
     <section class="text-center" data-ng-controller="ReleaseCtrl as ReleaseCtrl">
         <h3><translate>Data Release</translate> {{ ReleaseCtrl.release.releaseNumber }}</h3>
@@ -107,15 +103,14 @@
     <section class="sidebar icgc-cloud-home">
         <div class="divider"></div>
         <div class="icgc-container">
-          
-            <a href="/icgc-in-the-cloud" title="Go to ICGC in the Cloud Home">
-                <img alt="ICGC in the Cloud Logo" src="/scripts/repositories/images/home/ICGC_cloud_logo.png" />
-            </a>  
+
+            <a href="http://www.intel.com/content/www/us/en/healthcare-it/solutions/videos/ohsu-intel-collaboration-video.html" title="Go to ICGC in the Cloud Home">
+                <img alt="ICGC in the Cloud Logo" src="/styles/images/ccc-logo.png" style="    width: 50%; margin-left: auto; margin-right: auto;" />
+            </a>
             <p>
-              <translate>ICGC data is now available on commercial and academic compute cloud.</translate>
-              <a href="/icgc-in-the-cloud"><translate>Read more...</translate></a>
+The Collaborative Cancer Cloud (CCC) is a project led by Intel and OHSU to enable large-scale molecular and clinical data sharing and analysis through an interoperable distributed network of compute centers. The Data Portal is built on the CCC platform, which provides core technical capabilities for security, federation, and scalabilty.
             </p>
         </div>
     </section>
-    
+
 </article>

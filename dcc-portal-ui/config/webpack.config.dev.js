@@ -2,7 +2,8 @@ var path = require('path');
 var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
-var paths = require('./paths');
+var paths = require('./ICGC_PATHS');
+// var paths = require('./CUSTOM_PATHS');
 
 module.exports = {
   devtool: process.env.SOURCE_MAP ? process.env.SOURCE_MAP : 'eval-source-map',
@@ -22,7 +23,8 @@ module.exports = {
     path: paths.appBuild,
     pathinfo: true,
     filename: 'static/js/[name].js',
-    publicPath: 'http://local.dcc.icgc.org:9000/',
+    // On openstack, this path needs to match the external IP and port
+    publicPath: 'http://local.dcc.icgc.org/',
   },
   resolve: {
     extensions: ['', '.js', '.json'],
@@ -59,6 +61,15 @@ module.exports = {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
+            {
+              search: '\'SPINNER\'',
+              replace: paths.spinner
+            },
+            {
+              search: '\<branding-settings\>\<\/branding-settings\>',
+              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./ICGC_BRANDING.js'))}</script>`
+//              replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./CUSTOM_BRANDING.js'))}</script>`
+            }
           ]
         }
       },

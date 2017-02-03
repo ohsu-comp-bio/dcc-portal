@@ -49,9 +49,21 @@ module.exports = {
         query: {
           multiple: [
             {
+              search: '\<portal-settings\>\<\/portal-settings\>',
+              replace: `<script>window.ICGC_SETTINGS = ${JSON.stringify(require('./ICGC_SETTINGS.dev.js'))}</script>`
+            },
+            {
               search: '\'COPYRIGHT_YEAR\'',
               replace: new Date().getUTCFullYear()
             },
+            {
+              search: '\'SPINNER\'',
+              replace: paths.spinner
+            },
+            {
+              search: '\<branding-settings\>\<\/branding-settings\>',
+             replace: `<script>window.$ICGC_BRANDING = ${JSON.stringify(require('./branding.js'))}</script>`
+            }
           ]
         }
       },

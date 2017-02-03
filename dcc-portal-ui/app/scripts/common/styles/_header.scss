@@ -19,6 +19,21 @@ header {
     display: table-cell;
     vertical-align: middle;
 
+    /*@include breakpoint($break-tablet) {
+      font-size: 1.8rem;
+      margin-top: .8rem;
+      line-height: 2.5rem;
+      margin-right: 0.2rem;
+    }*/
+
+    #ccc-powered-by {
+		  font-size: small;
+      float:right;
+    }
+    #ccc-powered-by-img {
+      height: 2em   
+    }
+
     #icgc {
       color: $blueDark;
 		  font-weight: bold;
@@ -40,8 +55,8 @@ header {
       }
     }
     img {
-      height: 2.8rem;
-      width: 2.8rem;
+      // height: 2.8rem;
+      // width: 2.8rem;
       vertical-align: top;
     }
     
@@ -438,9 +453,9 @@ header {
       }
 
       img {
-        height: 4rem;
+        // height: 4rem;
+        // width: 4rem;
         margin-bottom: .9rem;
-        width: 4rem;
         vertical-align: middle;
       }
     }

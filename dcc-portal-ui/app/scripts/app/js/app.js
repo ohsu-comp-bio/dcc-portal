@@ -240,6 +240,7 @@
     'icgc.entitySetUpload',
     'icgc.genesets',
     'icgc.visualization',
+    'icgc.wdl',
     'icgc.enrichment',
     'icgc.sets',
     'icgc.analysis',
@@ -471,12 +472,12 @@
 
     })
     .run(function($state, $location, $window, $timeout, $rootScope, cfpLoadingBar, HistoryManager, gettextCatalog, Settings) {
-      
+
       // Setting the initial language to English CA.
       gettextCatalog.setCurrentLanguage('en_CA');
 
       HistoryManager.addToIgnoreScrollResetWhiteList(['analysis','advanced', 'compound', 'dataRepositories', 'donor', 'beacon', 'project', 'gene']);
-      
+
       $rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams, error) {
         if(error.status === 404){
           $state.go('404', {page: toState.name, id: toParams.id, url: toState.url}, {location: false});
@@ -556,14 +557,189 @@
 
     }
 
+    // Function that returns a interceptor function
+    // that intercepts all requests and redacts responses from requests
+    // that have no project filter
+    window._whiteListedProjects = ["XXXX-NONE-XXXX"];
+    function _logAuthorization(msg) {
+      console.log("_logAuthorization",window.location.href , JSON.stringify(msg));
+    }
+    function _getResponseSecurityFilter() {
+      // see https://github.com/mgonto/restangular#addresponseinterceptor
+      return function(data,operation,what,url,response,deferred) {
+        // data: The data received got from the server
+        // operation: The operation made. It'll be the HTTP method used except for a GET which returns a list of element which will return getList so that you can distinguish them.
+        // what: The model that's being requested. It can be for example: accounts, buildings, etc.
+        // url: The relative URL being requested. For example: /api/v1/accounts/123
+        // response: Full server response including headers
+        // deferred: The deferred promise for the request.
+        //The responseInterceptor must return the restangularized data element.
+        try {
+          if (url.includes("api/v1/donors") && data.facets.projectId.terms ) {
+            data.facets.projectId.terms = data.facets.projectId.terms.filter(function(t){return _whiteListedProjects.includes(t.term) });
+            _logAuthorization({"url":url, "redact_response": ["data.facets.projectId.terms"] });
+          }
+        } catch (e) { }
+        // try {
+        //   if (url.includes("api/v1/mutations")  ) {
+        //     console.log("REDACT ME",data);
+        //   }
+        // } catch (e) { }
+
+        try {
+          if (_.has(data, 'termFacets.projectCode.terms')) {
+            data.termFacets.projectCode.terms = _.remove(data.termFacets.projectCode.terms, function(e) {
+              return _whiteListedProjects.includes(e.term);
+            });
+            _logAuthorization({"url":url, "redact_response": ["data.termFacets.projectCode.terms"] });
+          }
+        } catch (e) { }
+
+        //        api/v1/mutations
+        try {
+          if (_.has(data, 'occurrences')) {
+            // remove projects we don't have access to
+            data.occurrences = _.remove(data.occurrences, function(e) {
+              return _whiteListedProjects.includes(e.projectId);
+            });
+            // adjust summary counts
+            if (_.has(data, 'affectedProjectCount')) {
+              var affectedProjects = _.reduce(data.occurrences, function(result, value, key) {
+                result[value.projectId] = (result[value.projectId]||0) + 1;
+                return result;
+              }, {});
+              data.affectedProjectCount = _.keys(affectedProjects).length;
+              data.affectedDonorCountTotal = _.reduce(affectedProjects, function(result, value, key) {
+                return result + value;
+              }, 0);
+            }
+            _logAuthorization({"url":url, "redact_response": ["data.occurrences","data.affectedProjectCount","data.affectedDonorCountTotal"] });
+          }
+        } catch (e) { }
+
+        try {
+          if (url.includes("api/v1/settings")  ) {
+            data.ssoCCC = 'http://' + location.hostname + ":3000?" ;
+            _logAuthorization({"url":url, "redact_response": ["ssoCCC"] });
+          }
+        } catch (e) { }
+
+        return data;
+      } ;
+    }
+
+    // Function that returns a interceptor function
+    // that intercepts all requests and applies a project filter
+    function _getRequestSecurityFilter() {
+      // https://github.com/mgonto/restangular#addfullrequestinterceptor
+      return function(element,operation,what,url,headers,queryParams) {
+        // element: The element to send to the server.
+        // operation: The operation made. It'll be the HTTP method used except for a GET which returns a list of element which will return getList so that you can distinguish them.
+        // what: The model that's being requested. It can be for example: accounts, buildings, etc.
+        // url: The relative URL being requested. For example: /api/v1/accounts/123
+
+        var logit = false ; //$icgcApp.getAPI().isDebugEnabled()
+        if (logit) {
+          console.log(
+            {"element":element,"operation":operation,"what":what,"url":url,"headers":headers,"queryParams":queryParams}
+          );
+        }
+        // generic project filter
+        var no_projectfilter = ["mutations","genes","mutations","donors","gene","occurrences", "repository/files","repository/files/summary"] ;
+        var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts","donor-mutations"];
+        var doNotfilterByProject = 0 ;
+        if (!queryParams.filters) {
+          doNotfilterByProject++;
+        }
+        if (no_projectfilter.includes(what)) {
+          doNotfilterByProject++;
+        }
+        no_projectfilter_urls.forEach(function(urlPart){
+          if (url.includes(urlPart)) {
+            doNotfilterByProject++;
+          }
+        }) ;
+
+        var filtered = false;
+        if (!doNotfilterByProject) {
+          filtered = true;
+
+          if (!queryParams.filters.project) {
+            queryParams.filters.project = {} ;
+          }
+          if(queryParams.filters.project.id) {
+            if(queryParams.filters.project.id.is) {
+              var _intersection = _.intersection(queryParams.filters.project.id.is, _whiteListedProjects);
+              if (_intersection.length == 0) {
+                _intersection = _whiteListedProjects;
+              }
+              queryParams.filters.project.id.is = _intersection;
+              _logAuthorization({"url":url, "filter": queryParams.filters });
+            }
+            if(queryParams.filters.project.id.not) {
+              var _projects = queryParams.filters.project.id.not;
+              delete queryParams.filters.project.id.not;
+              queryParams.filters.project.id.is = _.difference(_whiteListedProjects,_projects);
+              _logAuthorization({"url":url, "filter": queryParams.filters });
+            }
+          } else {
+            queryParams.filters.project.id = {"is":_whiteListedProjects};
+            _logAuthorization({"url":url, "filter": queryParams.filters });
+          }
+
+        }
+
+
+        if (!filtered && url.includes("files")) {
+          if (!queryParams.filters) {
+            queryParams.filters = {} ;
+          }
+          if (!queryParams.filters.file) {
+            queryParams.filters.file = {} ;
+          }
+          if (!queryParams.filters.file.projectCode) {
+            queryParams.filters.file.projectCode = {} ;
+            queryParams.filters.file.projectCode.is = _whiteListedProjects;
+            _logAuthorization({"url":url, "filter": queryParams.filters });
+          }
+        }
+        if (!filtered && what === "donors") {
+          if (!queryParams.filters.donor) {
+            queryParams.filters.donor = {} ;
+          }
+          if (!queryParams.filters.donor.projectId) {
+            queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
+          }
+          _logAuthorization({"url":url, "filter": queryParams.filters });
+        }
+
+        /** TODO redact responses from
+        api/v1/ui/search/projects/donor-mutation-counts
+        **/
+
+      }
+    }
+
     RestangularProvider.setRequestInterceptor(_getInterceptorDebugFunction('Request'));
     RestangularProvider.setResponseInterceptor(_getInterceptorDebugFunction('Reponse'));
+
+//    RestangularProvider.addFullRequestInterceptor(_getRequestSecurityFilter());
+//    RestangularProvider.addResponseInterceptor(_getResponseSecurityFilter());
 
     RestangularProvider.addFullRequestInterceptor(function (element, operation, route, url, headers, params, httpConfig) {
       if (params && params.filters && JSON.stringify(params.filters).match('ES:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')) {
         return {
           httpConfig: {cache: false}
         };
+      }
+    });
+
+    RestangularProvider.addFullRequestInterceptor(function (element, operation, route, url, headers, params, httpConfig) {
+      var ohsutoken = window.localStorage.getItem('ohsutoken') ;
+      if (ohsutoken) {
+        var myHeaders = headers || {};
+        myHeaders['Authorization'] = 'Bearer ' + ohsutoken;
+        return {headers: myHeaders};
       }
     });
 
@@ -652,6 +828,8 @@
       {type: 'curated_set', id: 'GS1', name: gettext('Cancer Gene Census'), universe: null}
     ]
   });
+
+  module.constant('Branding',window.$ICGC_BRANDING);
 
   module.controller('AppCtrl', function ($scope, Page, Settings) {
     var _ctrl = this;

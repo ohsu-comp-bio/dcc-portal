@@ -4,4 +4,10 @@ app/styles/bootstrap.css
 report/
 app/scripts/common/js/pql/pqlparser.js
 target/
+test-bower*
+data/users.htpasswd
+config/CUSTOM_BRANDING.js
+config/CUSTOM_PATHS.js
 translations/*.mo
+config/branding.js
+config/paths.js

@@ -7,11 +7,12 @@ function resolveApp(relativePath) {
 module.exports = {
   appBuild: resolveApp('target/classes/app'),
   appHtml: resolveApp('app/index.html'),
-  appFavicon: resolveApp('favicon.ico'),
+  appFavicon: resolveApp('OHSU_favicon.ico'),
   appPackageJson: resolveApp('package.json'),
   appSrc: resolveApp('app'),
   appNodeModules: resolveApp('node_modules'),
   bowerModules: resolveApp('app/bower_components'),
   internalVendorModules: resolveApp('app/vendor'),
-  ownNodeModules: resolveApp('node_modules')
+  ownNodeModules: resolveApp('node_modules'),
+  spinner: "/styles/images/ohsu-logo.png"
 };

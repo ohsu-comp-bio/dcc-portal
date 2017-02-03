@@ -203,6 +203,11 @@
     var ANALYSIS_ENTITY = 'analysis';
     var analysisList = [];
     var analysesStrings = {
+      wdl: {
+        name: 'WDL Operations',
+        description: 'Finally a workflow language meant to be read and written by humans.',
+        demoDescription: '"Hello world" WDL workflows in the CCC Context. WDL script: workflow, task, call, command and output.'
+      },
       set: {
         name: gettextCatalog.getString('Set Operations'),
         description: gettextCatalog.getString('Display Venn diagram and find out intersection or union,' + 
