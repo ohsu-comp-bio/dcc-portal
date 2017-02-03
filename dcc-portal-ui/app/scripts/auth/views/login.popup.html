@@ -27,6 +27,11 @@
                 <span class="logo">
                   <img src="/styles/images/ohsu-logo.png"></span>
             </li>
+            <li class="open-id-provider" data-ng-class="{active: params.provider=='bd2k'}"
+                data-ng-click="params.provider='bd2k'">
+                <span class="logo">
+                  <img src="/styles/images/bd2k_logo.png"></span>
+            </li>
             <li class="open-id-provider" data-ng-class="{active: params.provider=='icgc'}"
                 data-ng-click="params.provider='icgc'">
                 <span class="logo">
@@ -42,6 +47,17 @@
         </ul>
 
         <p data-ng-show="params.provider=='ohsu'">Sign in using your <strong>OHSU</strong> account.<br><br>
+          <label>Domain</label><br>
+          <input type="text" id="osDomain" style="width:50%" data-ng-model="params.osDomain">
+          <br>
+          <label>Username</label><br>
+          <input type="text" id="osUsername" style="width:50%" data-ng-model="params.osUsername">
+          <br>
+          <label>Password</label><br>
+          <input type="password" id="osPassword" style="width:50%" data-ng-model="params.osPassword">
+        </p>
+
+        <p data-ng-show="params.provider=='bd2k'">Sign in using your OHSU-affiliated <strong>BD2K</strong> account.<br><br>
           <label>Domain</label><br>
           <input type="text" id="osDomain" style="width:50%" data-ng-model="params.osDomain">
           <br>
