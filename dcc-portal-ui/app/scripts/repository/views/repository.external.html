@@ -35,7 +35,7 @@
           data-proxy-type="file"
           data-proxy-facet-name="id"
           data-label="{{'File' | translate}}"
-          data-placeholder="{{'e.g. FI123, 7f87aa6a-b447-5092...' | translate}}" 
+          data-placeholder="{{'e.g. FI123, 7f87aa6a-b447-5092...' | translate}}"
           data-entity-sets="ExternalRepoController.fileSets"
           data-show-entity-set-facet="true"/>
         <terms data-type="file"
@@ -261,7 +261,7 @@
                     <th><translate>Size</translate></th>
                     <th style="text-align:center">
                       <abbr>
-                        <i class="icon-chart-bar" 
+                        <i class="icon-chart-bar"
                           tooltip="{{'BAM & VCF Stats (available only for BAM and VCF Files in AWS and Collaboratory)' | translate}}" tooltip-placement="left">
                         </i>
                       </abbr>
@@ -281,7 +281,7 @@
                         <icgc-checkbox is-checked="ExternalRepoController.isSelected(row)"></icgc-checkbox>
                     </td>
 
-                    <td style="white-space:nowrap;max-width: 8rem; font-size: {{ row.fileId.length > 100? '0.75rem' : ' inherit' }}">
+                    <td style="white-space:nowrap;max-width: 8rem; overflow: hidden;text-overflow: ellipsis; font-size: {{ row.fileId.length > 100? '0.75rem' : ' inherit' }}">
                        <i class="{{ row.access === 'open' ? 'icon-lock-open' : 'icon-lock' }}" />
                        <a href="{{:: ExternalRepoController.dataRepoFileUrl }}{{ row.id }}"
                         tooltip="{{ ExternalRepoController.fileNames (row.fileCopies) }}"

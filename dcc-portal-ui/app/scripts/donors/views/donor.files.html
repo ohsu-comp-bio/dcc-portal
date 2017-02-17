@@ -30,7 +30,7 @@
       heading="{{'Experimental Strategy' | translate | replace: ' ':'&nbsp;'}}"
       label="{{'Files' | translate}}"
       type="pie" width="160"
-      group-percent="3" 
+      group-percent="3"
       height="150"></pie>
   </div>
 </section>
@@ -59,7 +59,7 @@
       <th><translate>Size</translate></th>
       <th style="text-align:center">
         <abbr>
-          <i class="icon-chart-bar" 
+          <i class="icon-chart-bar"
             tooltip="{{'BAM & VCF Stats (available only for BAM and VCF Files in AWS and Collaboratory)' | translate}}" tooltip-placement="left">
           </i>
         </abbr>
@@ -67,7 +67,7 @@
     </thead>
     <tbody>
       <tr data-ng-repeat="row in DonorFilesCtrl.files.hits">
-        <td style="white-space:nowrap;max-width: 8rem;">
+        <td style="white-space:nowrap;max-width: 8rem;overflow: hidden;text-overflow: ellipsis;">
           <i class="{{ row.access === 'open' ? 'icon-lock-open' : 'icon-lock' }}" />
           <a href="{{:: DonorFilesCtrl.dataRepoFileUrl}}{{row.id}}"
             tooltip="{{DonorFilesCtrl.fileNames(row.fileCopies)}}">
