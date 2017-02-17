@@ -203,16 +203,16 @@
     var ANALYSIS_ENTITY = 'analysis';
     var analysisList = [];
     var analysesStrings = {
-      wdl: {
-        name: 'WDL Operations',
-        description: 'Finally a workflow language meant to be read and written by humans.',
-        demoDescription: '"Hello world" WDL workflows in the CCC Context. WDL script: workflow, task, call, command and output.'
-      },
+      // wdl: {
+      //   name: 'WDL Operations',
+      //   description: 'Finally a workflow language meant to be read and written by humans.',
+      //   demoDescription: '"Hello world" WDL workflows in the CCC Context. WDL script: workflow, task, call, command and output.'
+      // },
       set: {
         name: gettextCatalog.getString('Set Operations'),
-        description: gettextCatalog.getString('Display Venn diagram and find out intersection or union,' + 
+        description: gettextCatalog.getString('Display Venn diagram and find out intersection or union,' +
           ' etc. of your sets of the same type.'),
-        demoDescription: gettextCatalog.getString('Compare high impact mutations in brain cancers across' + 
+        demoDescription: gettextCatalog.getString('Compare high impact mutations in brain cancers across' +
           ' GBM-US, LGG-US, and PCBA-DE.')
       },
       get union () {
@@ -233,7 +233,7 @@
       },
       oncogrid: {
         name: gettextCatalog.getString('OncoGrid'),
-        description: gettextCatalog.getString('Display OncoGrid diagram to visualize genetic alteration occurrences' + 
+        description: gettextCatalog.getString('Display OncoGrid diagram to visualize genetic alteration occurrences' +
           ' affecting a set of donors.'),
         demoDescription: gettextCatalog.getString('Generate an OncoGrid using top 75 donors and genes for PCAWG' +
         ' liver projects.')
