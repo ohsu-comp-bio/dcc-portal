@@ -27,7 +27,7 @@ RUN echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources
 RUN apt-get install -y apt-transport-https ca-certificates
 RUN apt-get update && apt-get install yarn
 
-# RUN echo '{ "allow_root": true }' > /root/.bowerrc
+RUN echo '{ "allow_root": true }' > /root/.bowerrc
 # RUN setcap 'cap_net_bind_service=+ep' /usr/local/bin/node
 
 RUN yarn
