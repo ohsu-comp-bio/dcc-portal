@@ -34,9 +34,6 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Cookie;
 
-import lombok.val;
-import lombok.extern.slf4j.Slf4j;
-
 import org.icgc.dcc.common.core.json.Jackson;
 import org.icgc.dcc.download.client.impl.HttpDownloadClient;
 import org.icgc.dcc.download.core.jwt.JwtService;
@@ -44,19 +41,20 @@ import org.icgc.dcc.download.core.model.DownloadFile;
 import org.icgc.dcc.download.core.model.DownloadFileType;
 import org.icgc.dcc.download.core.model.JobUiInfo;
 import org.icgc.dcc.download.core.response.JobResponse;
-import org.icgc.dcc.portal.server.auth.UserAuthProvider;
-import org.icgc.dcc.portal.server.auth.UserAuthenticator;
-import org.icgc.dcc.portal.server.auth.oauth.OAuthClient;
-import org.icgc.dcc.portal.server.config.ServerProperties.CrowdProperties;
+import org.icgc.dcc.portal.server.config.ServerProperties.AuthProperties;
 import org.icgc.dcc.portal.server.config.ServerProperties.DownloadProperties;
 import org.icgc.dcc.portal.server.download.JobInfo;
 import org.icgc.dcc.portal.server.jersey.mapper.BadRequestExceptionMapper;
 import org.icgc.dcc.portal.server.model.Query;
 import org.icgc.dcc.portal.server.model.User;
+import org.icgc.dcc.portal.server.security.jersey.UserAuthProvider;
+import org.icgc.dcc.portal.server.security.jersey.UserAuthenticator;
+import org.icgc.dcc.portal.server.security.oauth.OAuthClient;
 import org.icgc.dcc.portal.server.service.DonorService;
 import org.icgc.dcc.portal.server.service.ForbiddenAccessException;
 import org.icgc.dcc.portal.server.service.NotFoundException;
 import org.icgc.dcc.portal.server.service.SessionService;
+import org.icgc.dcc.portal.server.test.ResourceTest;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -69,7 +67,9 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.sun.jersey.api.client.ClientResponse;
-import org.icgc.dcc.portal.server.test.ResourceTest;
+
+import lombok.val;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RunWith(MockitoJUnitRunner.class)
@@ -131,7 +131,7 @@ public class DownloadResourceTest extends ResourceTest {
         .queryParam("info", "[{\"key\":\"donor\",\"value\":\"TSV\"},{\"key\":\"ssm\",\"value\":\"TSV\"}]")
         .queryParam("uiQueryStr", "testUiQueryStr")
         .queryParam("filters", "{\"donor\":{\"id\":{\"is\":[\"DO1\"]}}}")
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val actualDownloadId = response.getEntity(JobInfo.class);
@@ -212,7 +212,7 @@ public class DownloadResourceTest extends ResourceTest {
 
     val response = client()
         .resource(RESOURCE + "/" + jobId + "/status")
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val body = response.getEntity(String.class);
@@ -248,7 +248,7 @@ public class DownloadResourceTest extends ResourceTest {
     val response = client()
         .resource(RESOURCE + "/size")
         .queryParam("filters", "")
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val body = response.getEntity(String.class);
@@ -304,7 +304,7 @@ public class DownloadResourceTest extends ResourceTest {
 
     client()
         .resource(RESOURCE + "/" + jobId + "/info")
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
   }
 
@@ -314,7 +314,7 @@ public class DownloadResourceTest extends ResourceTest {
         new DownloadFile("/path/ssm.open.TST1-CA.tsv.gz", DownloadFileType.FILE, 1, 1),
         new DownloadFile("/path/ssm.controlled.TST1-CA.tsv.gz", DownloadFileType.FILE, 1, 1));
 
-    when(downloadClient.listFiles("/path")).thenReturn(downloadFiles);
+    when(downloadClient.listFiles("/path", false)).thenReturn(downloadFiles);
 
     val response = client()
         .resource(RESOURCE + "/info/path")
@@ -330,15 +330,16 @@ public class DownloadResourceTest extends ResourceTest {
 
   @Test
   public void testListDirectory_controlled() throws Exception {
+    val file1 = new DownloadFile("/path/ssm.open.TST1-CA.tsv.gz", DownloadFileType.FILE, 1, 1);
+    val file2 = new DownloadFile("/path/ssm.controlled.TST1-CA.tsv.gz", DownloadFileType.FILE, 1, 1);
     val downloadFiles = ImmutableList.of(
-        new DownloadFile("/path/ssm.open.TST1-CA.tsv.gz", DownloadFileType.FILE, 1, 1),
-        new DownloadFile("/path/ssm.controlled.TST1-CA.tsv.gz", DownloadFileType.FILE, 1, 1));
+        file1, file2);
 
-    when(downloadClient.listFiles("/path")).thenReturn(downloadFiles);
+    when(downloadClient.listFiles("/path", false)).thenReturn(downloadFiles);
 
     val response = client()
         .resource(RESOURCE + "/info/path")
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val body = response.getEntity(String.class);
@@ -371,7 +372,7 @@ public class DownloadResourceTest extends ResourceTest {
 
     val response = client()
         .resource(RESOURCE).queryParam("fn", path)
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val expectedRedirectUri = URI.create(format("%s/downloads/static?token=%s", SERVICE_URL, token));
@@ -449,7 +450,7 @@ public class DownloadResourceTest extends ResourceTest {
     val response = client()
         .resource(RESOURCE)
         .path(jobId)
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val expectedRedirectUri = URI.create(format("%s/downloads?token=%s", SERVICE_URL, token));
@@ -493,7 +494,7 @@ public class DownloadResourceTest extends ResourceTest {
     client()
         .resource(RESOURCE)
         .path(jobId)
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
   }
 
@@ -566,7 +567,7 @@ public class DownloadResourceTest extends ResourceTest {
         .resource(RESOURCE)
         .path(jobId)
         .path(SSM_CONTROLLED.getCanonicalName())
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val expectedRedirectUri =
@@ -593,7 +594,7 @@ public class DownloadResourceTest extends ResourceTest {
         .resource(RESOURCE)
         .path(jobId)
         .path(DONOR.getId())
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
 
     val expectedRedirectUri = URI.create(format("%s/downloads?token=%s&type=%s", SERVICE_URL, token, DONOR.getId()));
@@ -636,7 +637,7 @@ public class DownloadResourceTest extends ResourceTest {
         .resource(RESOURCE)
         .path(jobId)
         .path(DONOR.getId())
-        .cookie(new Cookie(CrowdProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
+        .cookie(new Cookie(AuthProperties.SESSION_TOKEN_NAME, sessionToken.toString()))
         .get(ClientResponse.class);
   }
 

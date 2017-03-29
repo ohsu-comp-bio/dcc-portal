@@ -23,7 +23,9 @@
   angular.module('app.common.footer.controllers', []);
 
   angular.module('app.common.footer.controllers').controller('FooterCtrl',
-    function ($scope, $http, PortalFeature, RouteInfoService) {
+
+    function ($scope, $http, PortalFeature, RouteInfoService, gettextCatalog, Branding) {
+
     var _ctrl = this;
 
     $http.get('/api/version').success(function(data) {
@@ -36,15 +38,13 @@
       'dataReleases', 'dataRepositories', 'pcawg'], RouteInfoService.get);
 
    var cloudLinks = [
-            {'link': '/icgc-in-the-cloud', 'title': 'About'},
-            {'link': '/icgc-in-the-cloud/aws', 'title': 'Amazon'},
-            {'link': '/icgc-in-the-cloud/collaboratory', 'title': 'Collaboratory'}//,
-            //{'link': '/icgc-in-the-cloud/guide', 'title': 'User Guide'}
-
+            {'link': '/icgc-in-the-cloud', 'title': gettextCatalog.getString('About')},
+            {'link': '/icgc-in-the-cloud/aws', 'title': gettextCatalog.getString('Amazon')},
+            {'link': '/icgc-in-the-cloud/collaboratory', 'title': gettextCatalog.getString('Collaboratory')}
           ];
 
     $scope.portalFeature = PortalFeature;
-
+    $scope.branding = Branding;
     $scope.stagedFeatures = {
       getCloudLinks: function() {
         return cloudLinks;

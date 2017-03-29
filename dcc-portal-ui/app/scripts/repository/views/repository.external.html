@@ -1,5 +1,5 @@
 <div class="h1-wrap">
-    <h1 data-ui-scrollfix="79" class="sticky-scrollfix">
+    <h1 data-ui-scrollfix="79">
         <span class="t_badge t_badge_icon t_badge__data_repositories">
           <span class="icon-download-cloud" />
         </span>
@@ -15,16 +15,16 @@
     <div class="t_tabs__tab t_tabs__tab__file"
       ng-class="{ active: ExternalRepoController.isOnFilesTab() }"
       ng-click="ExternalRepoController.setTabToFiles()">
-      Files
+      <translate>Files</translate>
     </div>
     <div class="t_tabs__tab t_tabs__tab__donor"
       ng-class="{ active: ExternalRepoController.isOnDonorsTab() }"
       ng-click="ExternalRepoController.setTabToDonors()">
-      Donors
+      <translate>Donors</translate>
     </div>
   </div>
 
-  <div style="position: relative; margin-right: -2rem">
+  <div class="t_facets_container">
     <div class="t_tab_pane"
       ng-class="{ active: ExternalRepoController.isOnFilesTab() }"
       ng-show="ExternalRepoController.isOnFilesTab()">
@@ -34,38 +34,40 @@
           data-facet-name="id"
           data-proxy-type="file"
           data-proxy-facet-name="id"
-          data-label="File"
-          data-placeholder="e.g. F123, 7f87aa6a-b447-5092..." />
+          data-label="{{'File' | translate}}"
+          data-placeholder="{{'e.g. FI123, 7f87aa6a-b447-5092...' | translate}}"
+          data-entity-sets="ExternalRepoController.fileSets"
+          data-show-entity-set-facet="true"/>
         <terms data-type="file"
           data-facet-name="repoName"
           data-facet="ExternalRepoController.files.termFacets.repoName"
-          data-label="Repository"
+          data-label="{{'Repository' | translate}}"
           data-icon-getter="ExternalRepoController.repoIconClass" />
         <terms data-type="file"
           data-facet-name="dataType"
-          data-label="Data Type"
+          data-label="{{'Data Type' | translate}}"
           data-facet="ExternalRepoController.files.termFacets.dataType"
           data-defined="true" />
         <terms data-type="file"
           data-facet-name="experimentalStrategy"
-          data-label="Experimental Strategy"
+          data-label="{{'Experimental Strategy' | translate}}"
           data-facet="ExternalRepoController.files.termFacets.experimentalStrategy"
           data-defined="true" />
         <terms data-type="file"
           data-facet-name="study"
-          data-label="Only Files in Study"
+          data-label="{{'Only Files in Study' | translate}}"
           data-missing-text="None"
           data-facet="ExternalRepoController.files.termFacets.study" />
         <terms data-type="file"
           data-facet-name="fileFormat"
-          data-label="File Format"
+          data-label="{{'File Format' | translate}}"
           data-facet="ExternalRepoController.files.termFacets.fileFormat" />
         <terms data-type="file" data-facet-name="software"
-          data-label="Analysis Software"
+          data-label="{{'Analysis Software' | translate}}"
           data-facet="ExternalRepoController.files.termFacets.software" />
         <terms data-type="file"
           data-facet-name="access"
-          data-label="Access"
+          data-label="{{'Access' | translate}}"
           data-collapsed="true"
           data-facet="ExternalRepoController.files.termFacets.access" />
       </ul>
@@ -78,38 +80,47 @@
         <li data-tags-facet
           data-type="file-donor"
           data-facet-name="id"
-          data-label="Donor"
-          data-placeholder="e.g. DO45299, SA501608"
+          data-label="{{'Donor' | translate}}"
+          data-placeholder="{{'e.g. DO45299, SA501608' | translate}}"
           data-proxy-type="file"
-          data-proxy-facet-name="donorId"></li>
+          data-proxy-facet-name="donorId"
+          data-entity-sets="ExternalRepoController.donorSets"
+          data-show-entity-set-facet="true"></li>
       <terms data-type="file" data-facet-name="projectCode"
-             data-label="Project"
+             data-label="{{'Project' | translate}}"
              data-facet="ExternalRepoController.files.termFacets.projectCode"
              data-defined="true" />
       <terms data-type="file" data-facet-name="primarySite"
-             data-label="Primary Site"
+             data-label="{{'Primary Site' | translate}}"
              data-facet="ExternalRepoController.files.termFacets.primarySite"></terms>
       <terms data-type="file" data-facet-name="specimenType"
              data-facet="ExternalRepoController.files.termFacets.specimenType"
-             data-label="Specimen Type"
+             data-label="{{'Specimen Type' | translate}}"
              data-defined="true"></terms>
       <terms data-type="file" data-facet-name="donorStudy"
-             data-label="Only Donors in Study"
+             data-label="{{'Only Donors in Study' | translate}}"
              data-missing-text="None"
              data-facet="ExternalRepoController.files.termFacets.donorStudy"></terms>
     </ul>
     <section>
+      <translate  has-markup>
         For more complex queries, use <a href=""
         ng-click="ExternalRepoController.viewInSearch (ExternalRepoController.summary.fileCount)">
           {{:: ExternalRepoController.advancedSearchInfo.title}}</a> and
           click on "View in {{:: ExternalRepoController.dataRepoTitle }}"
-      </section>
+      </translate>
+    </section>
     </div>
   </div>
 </aside>
 
-<article style="position: relative;">
+<article style="position: relative; margin-right: 1px;">
     <current></current>
+    <div data-ng-if="ExternalRepoController.loadState.isLoading" class="loading loading-text no-animate">
+      <h3><i class="icon-spinner icon-spin"></i>
+        <translate>Loading Files...</translate>
+      </h3>
+    </div>
     <section style="padding-top:0">
         <div>
            <!--
@@ -121,15 +132,15 @@
                -->
             </p>
         </div>
-        <div class="empty loading-text" data-ng-if="ExternalRepoController.files.hits.length === 0">
-            <h3>No Files Found</h3>
+        <div class="empty loading-text" data-ng-if="!ExternalRepoController.loadState.isLoading && ExternalRepoController.files.hits.length === 0">
+            <h3><translate>No Files Found</translate></h3>
         </div>
-        <div data-ng-if="ExternalRepoController.files.hits.length">
+        <div data-ng-if="!ExternalRepoController.loadState.isLoading && ExternalRepoController.files.hits.length">
             <section class="well" style="padding-top:0.5rem; padding-bottom:0.5rem">
 
                 <div class="quarter" data-ng-if="!ExternalRepoController.showIcgcGet">
                     <button class="t_button" data-ng-click="ExternalRepoController.downloadManifest()">
-                      <i class="icon-download"></i>Download manifests
+                      <i class="icon-download"></i><translate>Download manifests</translate>
                     </button>
                 </div>
                 <div class="quarter" data-ng-if="ExternalRepoController.showIcgcGet">
@@ -138,8 +149,8 @@
                   </button>
 
                   <button class="t_button" data-ng-click="ExternalRepoController.showIcgcGetModal()">
-                    <i class="icon-download-cloud"></i>
-                    <span class="mono">icgc-get</span>
+                    <img src="/styles/images/icgc-get-white.svg" style="width: 16px; margin-bottom: -3px;">
+                    <span>icgc-get</span>
                   </button>
                 </div>
 
@@ -150,19 +161,19 @@
                         <span data-ng-if="! ExternalRepoController.summary.donorCount">
                             <i class="icon-spinner icon-spin"></i>
                         </span>
-                    </strong> Files
+                    </strong> <translate>Files</translate>
                 </div>
                 <div class="quarter">
                     <i class="icon-team" style="font-size:1.25rem"></i>
                     <a href="" data-ng-if="ExternalRepoController.summary.donorCount" data-ng-click="ExternalRepoController.viewInSearch(ExternalRepoController.summary.fileCount)" >
                       <strong>
                           <span data-ng-bind="ExternalRepoController.summary.donorCount | number"></span>
-                      </strong> Donors
+                      </strong> <translate>Donors</translate>
                     </a>
                     <span data-ng-if="! ExternalRepoController.summary.donorCount">
                         <strong>
                             <i class="icon-spinner icon-spin"></i>
-                        </strong> Donors
+                        </strong> <translate>Donors</translate>
                     </span>
                 </div>
                 <div class="quarter omega">
@@ -181,8 +192,8 @@
                 <bar
                   config-overrides="ExternalRepoController.repoChartConfigOverrides"
                   items="ExternalRepoController.facetCharts.repositories"
-                  heading="Repository"
-                  ylabel="Files"
+                  heading="{{'Repository' | translate}}"
+                  ylabel="{{'Files' | translate}}"
                   type="bar"
                   width="390"
                   height="150"
@@ -190,11 +201,11 @@
                 >
                 </bar>
 
-                <pie items='ExternalRepoController.facetCharts.primarySite' heading="Primary&nbsp;Site" label="Files" type="pie" width="160" group-percent="3"
+                <pie items='ExternalRepoController.facetCharts.primarySite' heading="{{'Primary Site' | translate | replace: ' ':'&nbsp;'}}" label="{{'Files' | translate}}" type="pie" width="160" group-percent="3"
                    height="150"></pie>
-                <pie items='ExternalRepoController.facetCharts.dataType' heading="Data Type" label="Files" type="pie" width="160" group-percent="3"
+                <pie items='ExternalRepoController.facetCharts.dataType' heading="{{'Data Type' | translate}}" label="{{'Files' | translate}}" type="pie" width="160" group-percent="3"
                    height="150"></pie>
-                <pie items='ExternalRepoController.facetCharts.experimentalStrategy' heading="Experimental&nbsp;Strategy" label="Files" type="pie" width="160" group-percent="3"
+                <pie items='ExternalRepoController.facetCharts.experimentalStrategy' heading="{{'Experimental Strategy' | translate | replace: ' ':'&nbsp;'}}" label="{{'Files' | translate}}" type="pie" width="160" group-percent="3"
                    height="150"></pie>
               </div>
 
@@ -203,20 +214,26 @@
             <div class="clearfix"></div>
 
             <span class="action-toolbar pull-right">
-              <span class="action-item">
-                  <i class="icon-floppy"></i><a href="" data-ng-click="ExternalRepoController.saveFileSet('file', ExternalRepoController.summary.fileCount)">Save File Set</a>
+              <span class="action-item" style="font-weight: 300;">
+                  <i class="icon-floppy"></i><a href="" data-ng-click="ExternalRepoController.saveDonorSet('donor', ExternalRepoController.summary.donorCount)"><translate>Save Donor Set</translate></a>
               </span>
               <span class="action-item">
-                  <i class="icon-floppy"></i><a href="" data-ng-click="ExternalRepoController.saveDonorSet('donor', ExternalRepoController.summary.donorCount)">Save Donor Set</a>
+                  <entityset-persistence-dropdown
+                      selected-entity-ids="ExternalRepoController.selectedFiles"
+                      entity-type="'file'"
+                      set-total-count="ExternalRepoController.files.pagination.total"
+                      set-limit="ICGC_SETTINGS.maxNumberOfHits"
+                      on-operation-success="ExternalRepoController.handleOperationSuccess()"
+                  ></entityset-persistence-dropdown>
               </span>
             </span>
 
             <div class="t_table_top">
-                <span data-table-counts data-label="files" data-page="ExternalRepoController.files.pagination"></span>
+                <span data-table-counts data-label="{{'files' | translate}}" data-page="ExternalRepoController.files.pagination"></span>
                 <span class="t_tools">
                     <span class="t_tools__tool">
                         <i class="icon-file pull-right"
-                           data-tooltip="Export table as TSV" data-tooltip-placement="left"
+                           data-tooltip="{{'Export table as TSV' | translate}}" data-tooltip-placement="left"
                            data-ng-click="ExternalRepoController.export()"></i>
                     </span>
                 </span>
@@ -226,32 +243,45 @@
                 <thead>
                     <th>&nbsp;</th>
                     <th data-sortable data-type="files" data-field="id"
-                      data-active="true" data-reversed="true">File ID</th>
+                      data-active="true" data-reversed="true"><translate>File ID</translate></th>
 
-                    <th data-sortable data-type="files" data-field="donorId">Donor</th>
+                    <th data-sortable data-type="files" data-field="donorId"><translate>Donor</translate></th>
 
-                    <th>Repository</th>
+                    <th><translate>Repository</translate></th>
 
-                    <th data-sortable data-type="files" data-field="projectCode">Project</th>
+                    <th data-sortable data-type="files" data-field="projectCode"><translate>Project</translate></th>
 
-                    <th>Study</th>
-                    <th data-sortable data-type="files" data-field="dataType">Data Type</th>
-                    <th data-sortable data-type="files" data-field="experimentalStrategy">Strategy</th>
-                    <th>Format</th>
+                    <th><translate>Study</translate></th>
+                    <th data-sortable data-type="files" data-field="dataType"><translate>Data Type</translate></th>
+                    <th data-sortable data-type="files"
+                      data-field="experimentalStrategy"><translate>Strategy</translate></th>
+                    <th><translate>Format</translate></th>
 
                     <!-- <th data-sortable data-type="files" data-field="fileSize">Size</th> -->
-                    <th>Size</th>
-                    <th style="text-align:center"><abbr><i class="icon-chart-bar" tooltip="BAM & VCF Stats (available only for BAM and VCF Files in AWS and Collaboratory)" tooltip-placement="left"></i></abbr></th>
+                    <th><translate>Size</translate></th>
+                    <th style="text-align:center">
+                      <abbr>
+                        <i class="icon-chart-bar"
+                          tooltip="{{'BAM & VCF Stats (available only for BAM and VCF Files in AWS and Collaboratory)' | translate}}" tooltip-placement="left">
+                        </i>
+                      </abbr>
+                    </th>
 
                 </thead>
 
                 <tbody>
-                  <tr data-ng-repeat="row in ExternalRepoController.files.hits">
-                    <td class="text-center" data-ng-click="ExternalRepoController.toggleRow (row)" style="cursor: pointer">
-                     <i class="{{ ExternalRepoController.isSelected (row) ? 'icon-check' : 'icon-check-empty' }}" />
+                  <tr
+                    data-ng-repeat="row in ExternalRepoController.files.hits track by row.id"
+                    data-ng-click="ExternalRepoController.toggleRow (row)"
+                    ng-class="{
+                        'is-selected': ExternalRepoController.isSelected(row)
+                    }"
+                  >
+                    <td>
+                        <icgc-checkbox is-checked="ExternalRepoController.isSelected(row)"></icgc-checkbox>
                     </td>
 
-                    <td style="white-space:nowrap;max-width: 8rem; font-size: {{ row.fileId.length > 100? '0.75rem' : ' inherit' }}">
+                    <td style="white-space:nowrap;max-width: 8rem; overflow: hidden;text-overflow: ellipsis; font-size: {{ row.fileId.length > 100? '0.75rem' : ' inherit' }}">
                        <i class="{{ row.access === 'open' ? 'icon-lock-open' : 'icon-lock' }}" />
                        <a href="{{:: ExternalRepoController.dataRepoFileUrl }}{{ row.id }}"
                         tooltip="{{ ExternalRepoController.fileNames (row.fileCopies) }}"
@@ -266,7 +296,7 @@
                     </td>
 
                     <td tooltip="{{ ExternalRepoController.repoNamesInTooltip (row.fileCopies) }}"
-                      ng-bind="ExternalRepoController.repoNames (row.fileCopies)" />
+                      ng-bind="(row.fileCopies | _:'map':'repo.name' | _:'unique').join(', ')" />
 
                     <td ng-init="ProjectData = ExternalRepoController.buildProjectInfo (row.donors)">
                       <a href="{{ ProjectData.href }}" tooltip="{{ ProjectData.tooltip }}"
@@ -287,10 +317,9 @@
                     </td>
 
                     <td class="text-center" valign="middle" style="min-width: 1.6rem;">
-                      <i class="icon-chart-bar iobio-popup" tooltip="BAM statistics" data-ng-if="ExternalRepoController.fileFormats (row.fileCopies) == 'BAM' && ExternalRepoController.awsOrCollab(row.fileCopies)" data-ng-click="ExternalRepoController.showIobioModal(row.objectId, row.id, ExternalRepoController.getAwsOrCollabFileName(row.fileCopies))">
-                      </i>
-                      <i class="icon-chart-bar iobio-popup" tooltip="VCF statistics" data-ng-if="ExternalRepoController.fileFormats (row.fileCopies) == 'VCF' && ExternalRepoController.awsOrCollab(row.fileCopies)" data-ng-click="ExternalRepoController.showVcfIobioModal(row.objectId, row.id, ExternalRepoController.getAwsOrCollabFileName(row.fileCopies))">
-                      </i>
+                      <iobio-statistics data-file-copies="row.fileCopies"
+                        data-object-id="row.objectId"
+                        data-row-id="row.id"></iobio-statistics>
                     </td>
 
                   </tr>
@@ -299,12 +328,14 @@
            <pagination-controls data-type="files" data-data="ExternalRepoController.files"></pagination-controls>
         </div>
 
-        <div>
+        <div ng-if="!ExternalRepoController.loadState.isLoading && ExternalRepoController.files.hits.length">
             <br>
 
             <small class="pull-left">
-               Please see the <a href="http://docs.icgc.org/portal/repositories" target="_blank"><i class="icon-external-link"></i>Repository documentation</a> resource
-               for a general overview of this feature.
+              <translate>
+               Please see the <a href="http://docs.icgc.org/portal/repositories" target="_blank">
+               <i class="icon-external-link"></i>Repository documentation</a> resource for a general overview of this feature.
+              </translate>
             </small>
             <small class="pull-right">Index updated: {{ExternalRepoController.repoCreationTime | date}}</small>
         </div>

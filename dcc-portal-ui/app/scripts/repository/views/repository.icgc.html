@@ -10,12 +10,16 @@
 <div>
 <section style="padding-top:0">
     <div data-ng-repeat="file in ICGCRepoController.textFiles | filter:{name:'notice.txt'}" class="alert alert-error">
-       <div btf-markdown="file.textContent" class="release_notice"></div>
+       <div marked="file.textContent" class="release_notice"></div>
     </div>
 
     <section class="alert alert-warning" data-ng-if="ICGCRepoController.downloadEnabled === false">
-    {{:: ICGCRepoController.dataReleasesTitle }} section is currently unavailable due to maintenance.<br>
-    Please contact <a href="mailto:dcc-support@icgc.org">support</a> if you require assistance.
+        <translate>
+            {{:: ICGCRepoController.dataReleasesTitle }} section is currently unavailable due to maintenance.
+        </translate><br>
+        <translate>
+            Please contact <a href="mailto:dcc-support@icgc.org">support</a> if you require assistance.
+        </translate>
     </section>
 
     <div class="wide" data-ng-if="ICGCRepoController.downloadEnabled === true">
@@ -23,11 +27,11 @@
         <span data-ng-init="reverse=false"></span>
 
         <section class="loading" data-ng-if="! ICGCRepoController.files">
-            <h3><i class="icon-spin icon-spinner"></i>Loading...</h3>
+            <h3><i class="icon-spin icon-spinner"></i><translate>Loading...</translate></h3>
         </section>
 
         <div data-ng-if="ICGCRepoController.files" ng-init="releaseUrl = ICGCRepoController.dataReleasesUrl;">
-            <ul class="breadcrumb" style="background:#fff;font-size:1.25rem; margin-bottom:0">
+            <ul class="breadcrumb file-path-container">
                 <li><a href="{{:: releaseUrl }}"><i class="icon-database"></i>DCC</a></li>
                 <li data-ng-repeat="p in ICGCRepoController.slugs">
                     <a data-ng-if="!$last"
@@ -36,14 +40,43 @@
                     <span data-ng-if="$last"
                           data-ng-style="deprecatedReleases.indexOf(p.name) >= 0?{'text-decoration':'line-through'}:{}">{{ p.name }}</span>
                 </li>
+                <li>
+                    <span class="file-query-wrapper">
+                        <input
+                            type="text" class="form-control file-query-input"
+                            autofocus
+                            spellcheck="false"
+                            ng-model="ICGCRepoController.fileQuery"
+                            placeholder="Filter by file name..."
+                            ng-keyup="ICGCRepoController.handleFileQueryKeyup($event)"
+                        />
+                        <i
+                            style="position: absolute; top: 0; right: 3px; cursor: pointer;"
+                            class="icon-cancel ng-hide"
+                            data-ng-click="ICGCRepoController.fileQuery = ''"
+                            data-ng-show="ICGCRepoController.fileQuery"
+                        ></i>
+                    </span>
+                </li>
             </ul>
 
-            <table class="table" style="font-size: 1.1rem">
+            <file-finder
+                ng-show="ICGCRepoController.fileQuery"
+                query="ICGCRepoController.slugs.slice(-1)[0].url + ICGCRepoController.fileQuery"
+            >
+
+            </file-finder>
+
+            <table
+                ng-show="!ICGCRepoController.fileQuery || !ICGCRepoController.fileQuery.length"
+                class="table"
+                style="font-size: 1.1rem"
+            >
                 <thead>
                 <tr>
-                    <th>Name</th>
-                    <th class="text-right">File Size</th>
-                    <th class="text-right">Date</th>
+                    <th><translate>Name</translate></th>
+                    <th class="text-right"><translate>File Size</translate></th>
+                    <th class="text-right"><translate>Date</translate></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -66,14 +99,14 @@
             </table>
         </div>
 
-        <div>
+        <div ng-show="!ICGCRepoController.fileQuery || !ICGCRepoController.fileQuery.length">
            <br>
            <div data-ng-repeat="file in ICGCRepoController.textFiles | filter:{name : '!notice.txt'}">
                <div class="well well-small">
                    <div><a target="_self" href="{{ICGCRepoController.API.BASE_URL}}/download?fn={{file.name}}"><i class="icon-file"></i>{{file.baseName}}</a></div>
                    <hr>
-                   <div class="markdown_container">
-                       <div btf-markdown="file.textContent"></div>
+                   <div class="markdown-wrapper" >
+                       <div marked="file.textContent" class="markdown-container"></div>
                    </div>
                </div>
            </div>
@@ -81,10 +114,18 @@
     </div>
     <div class="narrow omega" data-ng-if="ICGCRepoController.downloadEnabled">
         <br>
+         <div data-ng-if="ICGCRepoController.isSafari && !ICGCRepoController.isChrome" 
+            class="alert alert-info" 
+            style="margin:2rem 0;">
+            <a href="#" class="close pull-right" style="cursor:pointer;" data-dismiss="alert" aria-label="close">&times;</a>
+            <strong><span>Using Safari browser?</span></strong><br>
+            We know that users have problems downloading gzip files from the download server.
+            The downloaded files only contain file headers. To fix the problem please either use any other browser or disable the "Open 'safe' files after downloading" option in Safari browser as described in <a href="https://discussions.apple.com/thread/2297632?tstart=0" target="_blank">this article</a>.
+        </div>
         <p>
             <span>
                 <a href="http://docs.icgc.org/portal/repositories/#having-trouble-downloading-a-file-from-dcc-repository" target="_blank">
-                    <i class="icon-external-link"></i> Having trouble downloading?
+                    <i class="icon-external-link"></i> <translate>Having trouble downloading?</translate>
                 </a>
             </span>
         <p/>

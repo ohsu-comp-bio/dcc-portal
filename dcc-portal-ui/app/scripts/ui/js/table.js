@@ -21,7 +21,13 @@ angular.module('icgc.ui.table', [
   'icgc.ui.table.size',
   'icgc.ui.table.counts',
   'icgc.ui.table.sortable',
-  'icgc.ui.table.pagination'
+  'icgc.ui.table.pagination',
+  'icgc.ui.table.filter',
+  'icgc.ui.table.row'
+]);
+
+angular.module('icgc.ui.table.row',[
+  'icgc.ui.table.row.limitation'
 ]);
 
 /* ************************************
@@ -35,7 +41,7 @@ angular.module('icgc.ui.table.size').controller('tableSizeController', function 
   $scope.selectedSize = $scope.currentSize? +$scope.currentSize : $scope.sizes[0];
 
   $scope.changeSize = function () {
-    var so = LocationService.getJsonParam($scope.type);
+    var so = LocationService.getJqlParam($scope.type);
 
     so.size = $scope.selectedSize;
     so.from = 1;
@@ -44,7 +50,7 @@ angular.module('icgc.ui.table.size').controller('tableSizeController', function 
   };
 });
 
-angular.module('icgc.ui.table.size').directive('tableSize', function () {
+angular.module('icgc.ui.table.size').directive('tableSize', function (gettextCatalog) {
   return {
     restrict: 'A',
     scope: {
@@ -52,8 +58,9 @@ angular.module('icgc.ui.table.size').directive('tableSize', function () {
       currentSize: '@'
     },
     replace: true,
-    template: '<span>Showing <select data-ng-options="size for size in sizes"' +
-              ' data-ng-model="selectedSize" data-ng-change="changeSize()"></select> rows</span>',
+    template: '<span>' + gettextCatalog.getString('Showing') + ' <select data-ng-options="size for size in sizes"' +
+      ' data-ng-model="selectedSize" data-ng-change="changeSize()"></select> '+ 
+      gettextCatalog.getString('rows') + '</span>',
     controller: 'tableSizeController'
   };
 });
@@ -63,7 +70,9 @@ angular.module('icgc.ui.table.size').directive('tableSize', function () {
  * ********************************* */
 angular.module('icgc.ui.table.counts', []);
 
-angular.module('icgc.ui.table.counts').directive('tableCounts', function () {
+angular.module('icgc.ui.table.counts')
+// This is server side pagination table row count
+.directive('tableCounts', function (gettextCatalog) {
   return {
     restrict: 'A',
     scope: {
@@ -72,11 +81,11 @@ angular.module('icgc.ui.table.counts').directive('tableCounts', function () {
     },
     replace: true,
     template: '<span>' +
-              'Showing <strong>{{page.from | number}}</strong> - ' +
+              gettextCatalog.getString('Showing') + ' <strong>{{page.from | number}}</strong> - ' +
               '<strong data-ng-if="page.count==page.size">' +
               '{{page.from + page.size - 1 | number}}</strong> ' +
               '<strong data-ng-if="page.count < page.size">{{page.total | number}}</strong> ' +
-              'of <strong>{{page.total | number}}</strong> {{label}}' +
+              gettextCatalog.getString('of') +' <strong>{{page.total | number}}</strong> {{label}}' +
               '</span>'
   };
 })
@@ -92,6 +101,31 @@ angular.module('icgc.ui.table.counts').directive('tableCounts', function () {
     template: '<span><a ng-if="theNumber > 0" ui-sref="{{:: sref }}">{{:: theNumber | number }}</a>' +
       '<span ng-if="theNumber === 0">{{:: zeroText }}</span></span>'
   };
+})
+// This is client side pagination table row counts
+.directive('tableRowCounts', function(gettextCatalog){
+  return {
+    restrict: 'E',
+    scope: {
+      data: '=',
+      filter: '=',
+      currentPage: '=',
+      rowLimit: '=',
+      label: '@'
+    },
+    template: gettextCatalog.getString('Showing') + 
+      '<span data-ng-if="(data | filter: filter).length > rowLimit">' + 
+      '  <strong>{{ ((currentPage-1) * rowLimit) + 1 }}</strong> - ' +
+      '  <strong data-ng-if="(currentPage * rowLimit) <= (data | filter: filter).length">'+
+      '    {{ currentPage * rowLimit }}</strong> ' +
+      '  </strong>'+
+      '  <strong data-ng-if="(currentPage * rowLimit) > (data | filter: filter).length">' +
+      '    {{(data | filter: filter).length}}'+
+      '  </strong> ' +
+      gettextCatalog.getString('of') + 
+      '</span>' +
+      '<strong> {{(data | filter: filter).length}}</strong> {{label}}'
+  };
 });
 
 angular.module('icgc.ui.table.pagination', [])
@@ -106,7 +140,7 @@ angular.module('icgc.ui.table.pagination', [])
     maxSize: 5
   })
 
-  .directive('paginationControls', function (paginationConfig, LocationService, $filter) {
+  .directive('paginationControls', function (paginationConfig, LocationService, $filter, gettextCatalog) {
     return {
       restrict: 'E',
       scope: {
@@ -193,7 +227,7 @@ angular.module('icgc.ui.table.pagination', [])
             scope.pages.unshift(firstPage);
 
             var numberOfPages = scope.data.pagination.pages;
-            var tooltip = 'Go to last page (#' + formatNumber (numberOfPages) + ')';
+            var tooltip = gettextCatalog.getString('Go to last page') + ' (#' + formatNumber (numberOfPages) + ')';
             lastPage = makePage (numberOfPages, lastText, false, scope.noNext(), tooltip);
             scope.pages.push(lastPage);
           }
@@ -224,7 +258,7 @@ angular.module('icgc.ui.table.pagination', [])
           var sType, from = (scope.data.pagination.size * (page - 1) + 1);
 
           if (type) {
-            sType = LocationService.getJsonParam(type);
+            sType = LocationService.getJqlParam(type);
             if (sType) {
               sType.from = from;
               LocationService.setJsonParam(type, sType);
@@ -237,6 +271,22 @@ angular.module('icgc.ui.table.pagination', [])
         };
       }
     };
+  })
+  .component('paginationClientSide', {
+    templateUrl: '/scripts/ui/views/pagination-client-side.html',
+    bindings: {
+      data: '=',
+      filter: '=',
+      rowLimit: '=',
+      rowSizes: '=',
+      currentPage: '='
+    },
+    controller: function($scope, $rootScope, FilterService) {
+      const _this = this;
+      $rootScope.$on(FilterService.constants.FILTER_EVENTS.FILTER_UPDATE_EVENT, () => {
+        _this.currentPage = 1;
+      });
+    }
   });
 
 
@@ -260,7 +310,7 @@ angular.module('icgc.ui.table.sortable', []).directive('sortable', function ($lo
       defaultReversed = scope.reversed;
 
       scope.$watch(function () {
-        return LocationService.getJsonParam(scope.type);
+        return LocationService.getJqlParam(scope.type);
       }, function (so) {
         scope.active = defaultActive;
         scope.reversed = defaultReversed;
@@ -275,7 +325,7 @@ angular.module('icgc.ui.table.sortable', []).directive('sortable', function ($lo
       }, true);
 
       scope.onClick = function () {
-        var so = LocationService.getJsonParam(scope.type);
+        var so = LocationService.getJqlParam(scope.type);
 
         if (so.hasOwnProperty('sort') && so.sort === scope.field) {
           scope.reversed = !scope.reversed;
@@ -301,25 +351,47 @@ angular.module('icgc.ui.table.sortable', []).directive('sortable', function ($lo
   };
 });
 
+angular.module('icgc.ui.table.filter', [])
+  .directive('tableFilter', function(gettextCatalog){
+    return {
+      restrict: 'E',
+      scope: {
+        filterModel: '=',
+        currentPage: '=',
+        class: '@'
+      },
+      template: '<span class="t_suggest t_suggest__header table-filter {{class}}">' +
+        '<input type="text" class="t_suggest__input form-control" placeholder="' + gettextCatalog.getString('Filter table') + 
+        '" data-ng-change="currentPage = 1;" data-ng-model="filterModel" />' + 
+        '<i class="t_suggest__embedded t_suggest__embedded__left t_suggest__embedded__search icon-search">' +
+        '</i>'+
+        '<i class="t_suggest__embedded t_suggest__embedded__right t_suggest__embedded__clear icon-cancel ng-hide"' + 
+        ' data-ng-click="filterModel = \'\'" data-ng-show="filterModel"></i>' +
+        '</span>',
+      replace: true
+    };
+  });
 
-
-
-/* ************************************
- *   Table Sortable
- * ********************************* */
-/*
-angular.module('icgc.ui.table.sortable', []);
-
-angular.module('icgc.ui.table.sortable').controller('tableSortableController', function () {
-  console.log('tableSortableController');
-});
-
-angular.module('icgc.ui.table.sortable').directive('tableSortable', function () {
-  return {
-    restrict: 'A',
-    link: function (scope, elem, attrs) {
-      console.log('tableSortable', attrs);
-    }
-  };
-});
-*/
+angular.module('icgc.ui.table.row.limitation', [])
+  .directive('rowLimit', function(gettextCatalog){
+    return {
+      restrict: 'E',
+      scope: {
+        data: '=',
+        filter : '=',
+        showLimit: '=',
+        defaultLimit : '='
+      },
+      replace: true,
+      template: '<div class="t_sh__toggle"'+
+        'data-ng-show="(data | filter: filter).length > defaultLimit">' +
+        '<a class="t_tools__tool" data-ng-click="showLimit = !showLimit" href="">' +
+        '<span>'+
+          '<i class="{{ !showLimit ? \'icon-caret-up\' : \'icon-caret-down\' }}"></i>'+
+            '{{ !showLimit ? "' + gettextCatalog.getString('less') + '" :' +
+              '((data | filter: filter).length - defaultLimit) + " ' +  gettextCatalog.getString('more')  + '"}}' +
+        '</span>' +
+        '</a>' +
+        '</div>'
+    };
+  });

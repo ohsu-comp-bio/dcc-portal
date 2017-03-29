@@ -136,7 +136,7 @@ public class EsRequestBuilderTest extends BaseElasticsearchTest {
 
   @Test
   public void neTest_nested() {
-    val result = executeQuery("ne(functionalImpact, 'Low')");
+    val result = executeQuery("not(nested(transcript, eq(functionalImpact, 'Low')))");
     assertTotalHitsCount(result, 2);
     containsOnlyIds(result, "MU2", "MU3");
   }
@@ -432,6 +432,18 @@ public class EsRequestBuilderTest extends BaseElasticsearchTest {
     val result = executeQuery("eq(mutation.location, 'chr1:1-41020906')");
     assertTotalHitsCount(result, 1);
     containsOnlyIds(result, "MU1");
+  }
+
+  @Test
+  public void hasCompoundTest() {
+    val result = executeQuery("exists(gene.compoundId)");
+    containsOnlyIds(result, "MU1");
+  }
+
+  @Test
+  public void missingCompoundTest() {
+    val result = executeQuery("missing(gene.compoundId)");
+    containsOnlyIds(result, "MU2", "MU3");
   }
 
   private SearchResponse executeQuery(String query) {

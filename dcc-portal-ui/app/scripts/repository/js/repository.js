@@ -15,17 +15,14 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+import {ensureArray, ensureString} from '../../common/js/ensure-input';
+import './file-finder';
+
 (function() {
   'use strict';
 
-  function ensureArray (array) {
-    return _.isArray (array) ? array : [];
-  }
   var isEmptyArray = _.flow (ensureArray, _.isEmpty);
 
-  function ensureString (string) {
-    return _.isString (string) ? string.trim() : '';
-  }
   var isEmptyString = _.flow (ensureString, _.isEmpty);
 
   function ensureObject (o) {
@@ -40,15 +37,18 @@
   var toJson = angular.toJson;
   var commaAndSpace = ', ';
 
-  var module = angular.module('icgc.repository.controllers', ['icgc.repository.services']);
+  var module = angular.module('icgc.repository.controllers', [
+    'icgc.repository.services',
+    'file-finder',
+    ]);
 
-  var cloudRepos = ['AWS - Virginia', 'Collaboratory - Toronto'];
+  var cloudRepos = ['AWS - Virginia', 'Collaboratory - Toronto', 'PDC - Chicago'];
 
   /**
    * ICGC static repository controller
    */
-  module.controller('ICGCRepoController', function($scope, $stateParams, Restangular, RepositoryService,
-    ProjectCache, API, Settings, Page, RouteInfoService) {
+  module.controller('ICGCRepoController', function($scope, $stateParams, $window, Restangular, 
+    FileService, ProjectCache, API, Settings, Page, RouteInfoService) {
     var _ctrl = this;
     var dataReleasesRouteInfo = RouteInfoService.get ('dataReleases');
 
@@ -62,6 +62,17 @@
     _ctrl.downloadEnabled = true;
     _ctrl.dataReleasesTitle = dataReleasesRouteInfo.title;
     _ctrl.dataReleasesUrl = dataReleasesRouteInfo.href;
+
+    _ctrl.isSafari = /Safari/.test($window.navigator.userAgent);
+    _ctrl.isChrome = /Chrome/.test($window.navigator.userAgent);
+
+    _ctrl.fileQuery = '';
+    _ctrl.handleFileQueryKeyup = ($event) => {
+      if (event.keyCode === 27) {
+        _ctrl.fileQuery = '';
+        $event.currentTarget.blur();
+      }
+    };
 
     function buildBreadcrumbs() {
       var i, s, slug, url;
@@ -107,12 +118,12 @@
     }
 
     function getFiles() {
-      RepositoryService.folder(_ctrl.path).then(function (response) {
+      FileService.folder(_ctrl.path).then(function (response) {
         var files = response;
 
         files.forEach(annotate);
 
-        _ctrl.files = RepositoryService.sortFiles(files, _ctrl.slugs.length);
+        _ctrl.files = FileService.sortFiles(files, _ctrl.slugs.length);
 
 
         // Grab text file (markdown)
@@ -122,13 +133,30 @@
         _ctrl.textFiles.forEach(function(f) {
           Restangular.one('download').get( {'fn':f.name}).then(function(data) {
             f.textContent = data;
+          }).then(function(){
+
+            // Workaround for links in README file on Releases page
+
+            angular.element('.markdown-container').delegate('a', 'click', function(){
+              var _elem = jQuery(this),
+                _href = _elem.attr('href');
+              
+              if(_href.indexOf('@') !== -1){
+                window.location.href = 'mailto:' + _href;
+                return false;
+              }
+              else if(_href.indexOf('http') === -1) {
+                window.location.href = 'http://' + _href;
+                return false;
+              }
+            });
           });
         });
 
       },function (error) {
         if(error.status === 503){
           _ctrl.downloadEnabled = false;
-        }        
+        }
       });
     }
 
@@ -198,13 +226,15 @@
     $modalInstance
   ) {
     var vm = this;
-    var loadState = new LoadState(); 
+    var loadState = new LoadState();
 
     var filters = _.extend({},
       FilterService.filters(),
-      _.isEmpty(params.selectedFiles) ? {
+      !_.isEmpty(params.selectedFiles) ? {
         file: {
-          id: params.selectedFiles
+          id: {
+            is: params.selectedFiles
+          }
         }
       } : {}
     );
@@ -220,7 +250,7 @@
       .then(function (manifestId) {
         vm.manifestId = manifestId;
       });
-    
+
     loadState.loadWhile(requestManifestId);
 
     _.extend(this, {
@@ -232,7 +262,7 @@
 
   module.controller('ExternalFileDownloadController',
     function ($scope, $location, $window, $document, $modalInstance, ExternalRepoService, SetService, FilterService,
-      Extensions, params, Restangular, $filter) {
+      Extensions, params, Restangular, $filter, RepositoryService) {
 
     $scope.selectedFiles = params.selectedFiles;
     $scope.cancel = function() {
@@ -241,6 +271,13 @@
 
     $scope.filters = FilterService.filters;
     $scope.$filter = $filter;
+    $scope.shouldDeduplicate = false;
+    $scope.summary = {};
+
+    $scope.getRepoFieldValue = function (repoName, fieldName) {
+      var repoData = $scope.shouldDeduplicate ? $scope.summary[repoName] : _.findWhere($scope.repos, { repoName: repoName });
+      return repoData && repoData[fieldName];
+    };
 
     $scope.handleNumberTweenStart = function (tween) {
       jQuery(tween.elem).closest('td').addClass('tweening');
@@ -262,10 +299,13 @@
     p.include = 'facets';
 
     function findRepoData(list, term) {
-      return _.find(list, function(t) { return t.term === term; }).count || 0;
+      return _.find(list, function(t) { return t.term === term }).count || 0;
     }
 
-    ExternalRepoService.getList (p).then (function (data) {
+    Promise.all([
+      ExternalRepoService.getList(p),
+      RepositoryService.getRepos(),
+    ]).then(function ([data, reposFromService]) {
       var facets = data.termFacets;
       var activeRepos = [];
 
@@ -277,6 +317,7 @@
       var repos = {};
       facets.repoName.terms.forEach(function(term) {
         var repoName = term.term;
+        const repo = _.find(reposFromService, {name: repoName});
 
         // Restrict to active repos if it is available
         if (!_.isEmpty(activeRepos) && !_.contains(activeRepos, repoName)) {
@@ -288,20 +329,20 @@
         }
 
         repos[repoName].repoName = repoName;
-        repos[repoName].repoCode = ExternalRepoService.getRepoCodeFromName(repoName);
+        repos[repoName].repoCode = repo.code;
         repos[repoName].fileSize = findRepoData(facets.repositorySizes.terms, repoName);
         repos[repoName].donorCount = findRepoData(facets.repositoryDonors.terms, repoName);
         repos[repoName].fileCount = term.count;
-        repos[repoName].hasManifest = _.includes(['AWS - Virginia', 'Collaboratory - Toronto'], repoName);
-        repos[repoName].isCloud = _.includes(cloudRepos, repoName);
+        repos[repoName].hasManifest = RepositoryService.isCloudRepo(repo);
+        repos[repoName].isCloud = RepositoryService.isCloudRepo(repo);
       });
 
-      $scope.repos = _.values(repos);
+      $scope.repos = _(repos).values().sortBy('fileSize').value().reverse();
       $scope.selectedRepos = Object.keys(repos);
 
       var manifestSummaryQuery = {
         query: p,
-        repoNames: _.map(repos, 'repoName')
+        repoNames: _.map($scope.repos, 'repoName')
       };
 
       return ExternalRepoService.getManifestSummary(manifestSummaryQuery).then(
@@ -319,7 +360,7 @@
       return ExternalRepoService.getManifestSummary(manifestSummaryQuery).then(
         function (summary) {
           $scope.summary = summary;
-        }); 
+        });
     };
 
     $scope.getRepoManifestUrl = ExternalRepoService.getRepoManifestUrl;
@@ -351,12 +392,15 @@
           repoCodes: _.map($scope.repos, 'repoCode'),
           filters: filters,
           format: 'tarball',
-          unique: true
+          unique: $scope.shouldDeduplicate,
         });
 
-        $window.open(manifestUrl);
+        window.location.href = manifestUrl;
       } else {
-        ExternalRepoService.downloadSelected($scope.selectedFiles, $scope.selectedRepos);
+        ExternalRepoService.downloadSelected(
+                $scope.selectedFiles, 
+        		$scope.shouldDeduplicate ? _.map($scope.repos, 'repoCode') : $scope.selectedRepos, 
+        		$scope.shouldDeduplicate);
       }
       $scope.cancel();
     };
@@ -384,8 +428,7 @@
 
       ExternalRepoService.createManifest(params).then(function (id) {
         if (! id) {
-          console.log('No Manifest UUID is returned from API call.');
-          return;
+          throw new Error('No Manifest UUID is returned from API call.');
         }
         repoData.isGeneratingManifestID = false;
         repoData.manifestID = id;
@@ -398,9 +441,10 @@
    * Controller for File Entity page
    */
   module.controller('ExternalFileInfoController',
-    function (Page, ExternalRepoService, CodeTable, ProjectCache, PCAWG, fileInfo, PortalFeature, SetService) {
+    function (Page, ExternalRepoService, CodeTable, ProjectCache, PCAWG, fileInfo, PortalFeature, SetService,
+      gettextCatalog) {
 
-    Page.setTitle('Repository File');
+    Page.setTitle(gettextCatalog.getString('Repository File'));
     Page.setPage('externalFileEntity');
 
     var slash = '/';
@@ -414,11 +458,15 @@
     refresh();
 
     this.fileInfo = fileInfo;
+    this.uiDonorInfo = getUiDonorInfoJSON(fileInfo.donors);
     this.stringOrDefault = stringOrDefault;
     this.isEmptyString = isEmptyString;
     this.defaultString = defaultString;
-    this.shouldLimitDisplayedDonors = true;
-    this.defaultDonorLimit = 5;
+    
+    // Defaults for client side pagination 
+    this.currentDonorsPage = 1;
+    this.defaultDonorsRowLimit = 10;
+    this.rowSizes = [10, 25, 50];
 
     function convertToString (input) {
       return _.isString (input) ? input : (input || '').toString();
@@ -474,9 +522,9 @@
     };
 
     // Public functions
-    this.projectName = function (projectCode) {
+    function projectName (projectCode) {
       return _.get (projectMap, projectCode, '');
-    };
+    }
 
     this.buildUrl = function (baseUrl, dataPath, entityId) {
       // Removes any opening and closing slash in all parts then concatenates.
@@ -535,14 +583,14 @@
     this.equalsIgnoringCase = equalsIgnoringCase;
 
     this.downloadManifest = function (fileId, repo) {
-      ExternalRepoService.downloadSelected ([fileId], [repo]);
+      ExternalRepoService.downloadSelected ([fileId], [repo], true);
     };
 
-    this.noNullConcat = function (values) {
+    function noNullConcat (values) {
       var flattened = _.flatten(values);
       var result = isEmptyArray (flattened) ? '' : _.filter (flattened, _.negate (isEmptyString)).join (commaAndSpace);
       return stringOrDefault (result);
-    };
+    }
 
     this.shouldShowMetaData = function (repoType) {
       /* JJ: Quality is too low: || isEGA (repoType) */
@@ -566,6 +614,27 @@
          _.includes(_.pluck(fileCopies, 'repoCode'), 'collaboratory');
     };
 
+    function getUiDonorInfoJSON(donors){
+      return donors.map(function(donor){
+        return _.extend({}, {
+          uiProjectCode: donor.projectCode,
+          uiStringProjectCode: stringOrDefault(donor.projectCode),
+          uiProjectName: projectName(donor.projectCode),
+          uiPrimarySite: stringOrDefault(donor.primarySite),
+          uiStudy: donor.study,
+          uiDonorId: donor.donorId,
+          uiStringDonorId: stringOrDefault(donor.donorId),
+          uiSubmitterId: noNullConcat([donor.otherIdentifiers.tcgaParticipantBarcode, donor.submittedDonorId]),
+          uiSpecimentId: noNullConcat(donor.specimenId),
+          uiSpecimentSubmitterId: noNullConcat([donor.otherIdentifiers.tcgaSampleBarcode, donor.submittedSpecimenId]),
+          uiSpecimenType: noNullConcat(donor.specimenType),
+          uiSampleId: noNullConcat(donor.sampleId),
+          uiSampleSubmitterId: noNullConcat([donor.otherIdentifiers.tcgaAliquotBarcode, donor.submittedSampleId]),
+          uiMatchedSampleId: stringOrDefault(donor.matchedControlSampleId)
+        });
+      });
+    }
+
   });
 
   /**
@@ -573,7 +642,7 @@
    */
   module.controller ('ExternalRepoController', function ($scope, $window, $modal, LocationService, Page,
     ExternalRepoService, SetService, ProjectCache, CodeTable, RouteInfoService, $rootScope, PortalFeature,
-    FacetConstants, Facets) {
+    FacetConstants, Facets, LoadState) {
 
     var dataRepoTitle = RouteInfoService.get ('dataRepositories').title,
         FilterService = LocationService.getFilterService();
@@ -588,6 +657,8 @@
     var currentTabName = tabNames.files;
     var projectMap = {};
     var _ctrl = this;
+
+    this.handleOperationSuccess = () => { this.selectedFiles = [] };
 
     _ctrl.showIcgcGet = PortalFeature.get('ICGC_GET');
     _ctrl.selectedFiles = [];
@@ -627,7 +698,7 @@
         maxPadding: 0.01,
         labels: {
           formatter: function () {
-            return this.value / 1000 + 'k';
+            return this.value > 1000 ? this.value / 1000 + 'k' : this.value ;
           }
         },
         lineWidth: 1,
@@ -665,6 +736,19 @@
         }
       }
     };
+
+    _ctrl.donorSetsForRepo = () => 
+      _.map(_.cloneDeep(SetService.getAllDonorSets()), (set) => {
+        set.repoFilters = {};
+        set.repoFilters.file = {};
+        set.repoFilters.file.donorId = set.advFilters.donor.id;
+        return set;
+      });
+
+    // Adding filters for repository to the donor set
+    _ctrl.donorSets = _ctrl.donorSetsForRepo();
+
+    _ctrl.fileSets = _.cloneDeep(SetService.getAllFileSets());
 
     function toSummarizedString (values, name) {
       var size = _.size (values);
@@ -731,9 +815,6 @@
     /**
      * Tablular display
      */
-    _ctrl.repoNames = function (fileCopies) {
-      return uniquelyConcat (fileCopies, 'repoName');
-    };
 
     _ctrl.fileFormats = function (fileCopies) {
       return uniquelyConcat (fileCopies, 'fileFormat');
@@ -761,25 +842,12 @@
     };
 
     _ctrl.repoNamesInTooltip = function (fileCopies) {
-      return tooltipList (fileCopies, 'repoName', '');
+      return tooltipList (fileCopies, 'repo.name', '');
     };
 
     _ctrl.awsOrCollab = function(fileCopies) {
        return _.includes(_.pluck(fileCopies, 'repoCode'), 'aws-virginia') ||
          _.includes(_.pluck(fileCopies, 'repoCode'), 'collaboratory');
-    };
-
-    _ctrl.getAwsOrCollabFileName = function(fileCopies) {
-      try {
-        var fCopies = _.filter(fileCopies, function(fCopy) {
-          return fCopy.repoCode === 'aws-virginia' || fCopy.repoCode === 'collaboratory';
-        });
-
-        return _.pluck(fCopies, 'fileName')[0];
-      } catch (err) {
-        console.log(err);
-        return 'Could Not Retrieve File Name';
-      }
     };
 
     _ctrl.fileAverageSize = function (fileCopies) {
@@ -801,17 +869,7 @@
     };
 
     _ctrl.repoIconClass = function (repoName) {
-      var repoCode = ExternalRepoService.getRepoCodeFromName (repoName);
-
-      if (! _.isString (repoCode)) {
-        return '';
-      }
-
-      if (_.startsWith (repoCode, 'aws-') || repoCode === 'collaboratory') {
-        return 'icon-cloud';
-      }
-
-      return '';
+      return _.includes(cloudRepos, repoName) ? 'icon-cloud' : '';
     };
 
     /**
@@ -925,69 +983,10 @@
         }
       });
     };
+    
+    _ctrl.isSelected = (row) => _ctrl.selectedFiles.includes(row.id);
 
-    _ctrl.showIobioModal = function(objectId, objectName, name) {
-      var fileObjectId = objectId;
-      var fileObjectName = objectName;
-      var fileName = name;
-      $modal.open ({
-        controller: 'ExternalIobioController',
-        template: '<section id="bam-statistics" class="bam-statistics-modal">'+
-          '<bamstats bam-id="bamId" on-modal=true bam-name="bamName" bam-file-name="bamFileName" data-ng-if="bamId">'+
-          '</bamstats></section>',
-        windowClass: 'iobio-modal',
-        resolve: {
-          params: function() {
-            return {
-              fileObjectId: fileObjectId,
-              fileObjectName: fileObjectName,
-              fileName: fileName
-            };
-          }
-        }
-      }).opened.then(function() {
-        setTimeout(function() { $rootScope.$broadcast('bamready.event', {});}, 300);
-
-      });
-    };
-
-    _ctrl.showVcfIobioModal = function(objectId, objectName, name) {
-      var fileObjectId = objectId;
-      var fileObjectName = objectName;
-      var fileName = name;
-      $modal.open ({
-        controller: 'ExternalVcfIobioController',
-        template: '<section id="vcf-statistics" class="vcf-statistics-modal">'+
-          '<vcfstats vcf-id="vcfId" on-modal=true vcf-name="vcfName" vcf-file-name="vcfFileName" data-ng-if="vcfId">'+
-          '</vcfstats></section>',
-        windowClass: 'iobio-modal',
-        resolve: {
-          params: function() {
-            return {
-              fileObjectId: fileObjectId,
-              fileObjectName: fileObjectName,
-              fileName: fileName
-            };
-          }
-        }
-      }).opened.then(function() {
-        setTimeout(function() { $rootScope.$broadcast('bamready.event', {});}, 300);
-      });
-    };
-
-    _ctrl.isSelected = function (row) {
-      return _.contains (_ctrl.selectedFiles, row.id);
-    };
-
-    _ctrl.toggleRow = function (row) {
-      if (_ctrl.isSelected (row) === true) {
-        _.remove (_ctrl.selectedFiles, function (r) {
-          return r === row.id;
-        });
-      } else {
-        _ctrl.selectedFiles.push (row.id);
-      }
-    };
+    _ctrl.toggleRow = (row) => { _ctrl.selectedFiles = _.xor(_ctrl.selectedFiles, [row.id]) };
 
     /**
      * Undo user selected files
@@ -1044,9 +1043,12 @@
       });
     }
 
+    var loadState = new LoadState();
+    _ctrl.loadState = loadState;
+
     function refresh() {
-      var promise, params = {};
-      var filesParam = LocationService.getJsonParam ('files');
+      var params = {};
+      var filesParam = LocationService.getJqlParam ('files');
 
       // Default
       params.size = 25;
@@ -1065,8 +1067,7 @@
       params.filters = FilterService.filters();
 
       // Get files that match query
-      promise = ExternalRepoService.getList (params);
-      promise.then (function (data) {
+      var listRequest = ExternalRepoService.getList (params).then (function (data) {
         // Vincent asked to remove city names from repository names for CGHub and TCGA DCC.
         fixRepoNameInTableData (data.hits);
         _ctrl.files = data;
@@ -1078,22 +1079,34 @@
       });
 
       // Get summary
-      ExternalRepoService.getSummary (params).then (function (summary) {
+      var summaryRequest = ExternalRepoService.getSummary (params).then (function (summary) {
         _ctrl.summary = summary;
       });
 
       // Get index creation time
-      ExternalRepoService.getMetaData().then (function (metadata) {
+      var metaDataRequeset = ExternalRepoService.getMetaData().then (function (metadata) {
         _ctrl.repoCreationTime = metadata.creation_date || '';
       });
 
-      ProjectCache.getData().then (function (cache) {
+      var cacheReqeust = ProjectCache.getData().then (function (cache) {
         projectMap = ensureObject (cache);
       });
 
+      loadState.loadWhile([listRequest, summaryRequest, metaDataRequeset, cacheReqeust]);
     }
 
+    // to check if a set was previously selected and if its still in effect
+    const updateSetSelection = (entity, entitySets) => {
+      let filters = FilterService.filters();
+
+      entitySets.forEach( (set) =>
+        set.selected = filters.file && filters.file[entity] &&  _.includes(filters.file[entity].is, `ES:${set.id}`)
+      );
+    };
+
     refresh();
+    updateSetSelection('donorId', _ctrl.donorSets);
+    updateSetSelection('id', _ctrl.fileSets);
 
     // Pagination watcher, gets destroyed with scope.
     $scope.$watch(function() {
@@ -1115,11 +1128,13 @@
       else {
         refresh();
       }
+      updateSetSelection('donorId', _ctrl.donorSets);
+      updateSetSelection('id', _ctrl.fileSets);
     });
 
     // Remove any pagination on facet change: see DCC-4589
     $scope.$on(FacetConstants.EVENTS.FACET_STATUS_CHANGE, function() {
-      var filesParam = LocationService.getJsonParam('files');
+      var filesParam = LocationService.getJqlParam('files');
       if (!_.isEmpty(filesParam)) {
         var newParam = {
           from: 1,
@@ -1127,6 +1142,11 @@
           };
         LocationService.setJsonParam('files', newParam);
       }
+    });
+
+    $rootScope.$on(SetService.setServiceConstants.SET_EVENTS.SET_CHANGE_EVENT, () => {
+      _ctrl.donorSets = _ctrl.donorSetsForRepo();
+      _ctrl.fileSets = _.cloneDeep(SetService.getAllFileSets());
     });
 
   });

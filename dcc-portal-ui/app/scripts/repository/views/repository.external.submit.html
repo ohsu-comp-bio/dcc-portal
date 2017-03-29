@@ -1,6 +1,6 @@
 <div class="modal-content download-manifests light">
     <div class="modal-header clearfix">
-      <h3 class="pull-left">Download manifests</h3>
+      <h3 class="pull-left"><translate>Generate manifest(s)</translate></h3>
       <button class="pull-right t_button" data-ng-click="cancel()"><i
               class="icon-cancel"></i>
       </button>
@@ -10,27 +10,43 @@
       <div class="modal-info-wrapper">
         <img class="modal-info-figure" src="/styles/images/checklist.svg" />
         <div class="modal-info">
-          <p>A manifest is a text file passed to download clients in order to download selected files of interest. Each repository's manifest file can be individually downloaded.
+          <p>
+            <translate>
+              A manifest is a text file passed to download clients in order to download selected files of interest.
+            </translate>
           </p>
-          <p ng-if="repos.length > 1">When choosing "Download", a manifest containing unique files from all repositories will be generated. Some files may be stored in multiple repositories. Duplicates from repositories lower in the list will not be included. You may drag to reorder the list to affect the generated manifest.
+          <p ng-if="repos.length > 1">
+            <translate>
+              Some files may be stored in multiple repositories. When "Remove duplicate files" is checked, duplicates from repositories lower in the list will not be included, and a manifest containing unique files from all repositories will be generated. You may drag rows to reorder the list to affect the generated manifest.
+            </translate>
           </p>
           <p>
-            See the <a href="http://docs.icgc.org/cloud/guide/#manifest-command" target="_blank" class="light">User Guide<i class="icon-external-link"></i></a> for more information on manifest files
-            <span ng-if="repos.length === 1 && repos[0].hasManifest">and manifest IDs</span>.
+            <translate translate-comment="See the User Guide for more information on manifest files">See the</translate>
+            <a href="http://docs.icgc.org/cloud/guide/#manifest-command" target="_blank" class="light" external-link>
+              <translate translate-comment="See the User Guide for more information on manifest files">User Guide</translate>
+            </a>
+            <translate translate-comment="See the User Guide for more information on manifest files">for more information on manifest files</translate>
           </p>
           <p>
-          The available repositories below are restricted by your search filter:
+            <translate>For information on how to obtain access, see the <a href="http://docs.icgc.org/cloud/repositories/" target="_blank" external-link>Repositories documentation</a>.</translate>
           </p>
+          <p>
+            <translate>The available repositories below are restricted by your search filter:</translate>
+          </p>
+          <label class="no-select text-right" ng-show="repos.length > 1">
+            <input ng-model="shouldDeduplicate" type="checkbox"/>
+            <translate>Remove duplicate files</translate>
+          </label>
         </div>
       </div>
 
        <table class="table table-info">
          <thead>
-           <th class="text-center" colspan="2" ng-if="repos.length > 1">Priority</th>
-           <th style="width: 40%;">Repository</th>
-           <th class="text-right"># Donors</th>
-           <th class="text-right"># Files</th>
-           <th class="text-right">Total file size</th>
+           <th ng-if="shouldDeduplicate" class="text-center no-animate" colspan="2" ng-if="repos.length > 1"><translate>Priority</translate></th>
+           <th style="width: 40%;"><translate>Repository</translate></th>
+           <th class="text-right"><translate># Donors</translate></th>
+           <th class="text-right"><translate># Files</translate></th>
+           <th class="text-right"><translate>Total file size</translate></th>
          </thead>
 
          <tbody dnd-list="repos">
@@ -43,43 +59,53 @@
               dnd-draggable="repoData"
               dnd-dragstart="closeDropdowns()"
               dnd-effect-allowed="move"
+              dnd-disable-if="!shouldDeduplicate"
             >
-             <td class="handle text-right" ng-if="repos.length > 1">&nbsp;::: </td>
-             <td class="text-left" ng-if="repos.length > 1">{{$index + 1}}</td>
+             <td class="handle text-right no-animate" ng-if="shouldDeduplicate && repos.length > 1">&nbsp;::: </td>
+             <td class="text-left no-animate" ng-if="shouldDeduplicate && repos.length > 1">{{$index + 1}}</td>
              <td>
                 <i ng-if="repoData.isCloud" class="icon-cloud"></i>
                 {{ repoData.repoName }}
              </td>
-             <td class="text-right">
-                <number-tween
-                  ng-if="summary[repoData.repoName].donorCount !== undefined"
-                  value="summary[repoData.repoName].donorCount"
+            <td
+              class="text-right"
+            >
+              <number-tween
+                ng-if="getRepoFieldValue(repoData.repoName, 'donorCount') !== undefined"
+                value="getRepoFieldValue(repoData.repoName, 'donorCount')"
+                formatter="$filter('number')"
+                on-tween-start="handleNumberTweenStart"
+                on-tween-end="handleNumberTweenEnd"
+              ></number-tween>
+              <i ng-if="getRepoFieldValue(repoData.repoName, 'donorCount') === undefined" class="icon-spinner icon-spin no-animate"></i>
+            </td>
+
+             <td
+              class="text-right"
+            >
+               <number-tween
+                  ng-if="getRepoFieldValue(repoData.repoName, 'fileCount') !== undefined"
+                  value="getRepoFieldValue(repoData.repoName, 'fileCount')"
                   formatter="$filter('number')"
                   on-tween-start="handleNumberTweenStart"
                   on-tween-end="handleNumberTweenEnd"
                 ></number-tween>
-                <i ng-style="{'display': summary[repoData.repoName].donorCount === undefined ? '' : 'none'}" class="icon-spinner icon-spin"></i>
+                <i ng-if="getRepoFieldValue(repoData.repoName, 'fileCount') === undefined" class="icon-spinner icon-spin no-animate"></i>
             </td>
-             <td class="text-right">
+
+            <td
+              class="text-right"
+            >
                <number-tween
-                  ng-if="summary[repoData.repoName].fileCount !== undefined"
-                  value="summary[repoData.repoName].fileCount"
-                  formatter="$filter('number')"
-                  on-tween-start="handleNumberTweenStart"
-                  on-tween-end="handleNumberTweenEnd"
-                ></number-tween>
-                <i ng-style="{'display': summary[repoData.repoName].fileCount === undefined ? '' : 'none'}" class="icon-spinner icon-spin"></i>
-            </td>
-             <td class="text-right">
-               <number-tween
-                  ng-if="summary[repoData.repoName].fileSize !== undefined"
-                  value="summary[repoData.repoName].fileSize"
+                  ng-if="getRepoFieldValue(repoData.repoName, 'fileSize') !== undefined"
+                  value="getRepoFieldValue(repoData.repoName, 'fileSize')"
                   formatter="$filter('bytes')"
                   on-tween-start="handleNumberTweenStart"
                   on-tween-end="handleNumberTweenEnd"
                 ></number-tween>
-                <i ng-style="{'display': summary[repoData.repoName].fileSize === undefined ? '' : 'none'}" class="icon-spinner icon-spin"></i>
+                <i ng-if="getRepoFieldValue(repoData.repoName, 'fileSize') === undefined" class="icon-spinner icon-spin no-animate"></i>
             </td>
+
            </tr>
 
             <tr class="extras" data-ng-repeat-end data-ng-if="
@@ -97,7 +123,7 @@
 
                   <div class="row" data-ng-if="repoData.shortUrl">
                     <div class="col-sm-3">
-                      Manifest URL
+                      <translate>Manifest URL</translate>
                     </div>
                     <div class="col-sm-9 text-left">
                       <input
@@ -113,8 +139,8 @@
                           data-copy-data="repoData.shortUrl"
                           data-show-copy-tips="true"
                           data-prompt-on-copy="false"
-                          data-on-copy-success-message="Copied!"
-                          data-on-hover-message="Copy to clipboard"
+                          data-on-copy-success-message="{{'Copied!' | translate}}"
+                          data-on-hover-message="{{'Copy to clipboard' | translate}}"
                         >
                           <span class="icon-clippy"></span>
                       </span>
@@ -123,7 +149,7 @@
 
                   <div class="row" data-ng-if-start="repoData.manifestID">
                     <div class="col-sm-3">
-                      Manifest ID
+                      <translate>Manifest ID</translate>
                     </div>
                     <div class="col-md-5 text-left">
                       
@@ -142,8 +168,8 @@
                                 data-copy-data="repoData.manifestID"
                                 data-show-copy-tips="true"
                                 data-prompt-on-copy="false"
-                                data-on-copy-success-message="Copied!"
-                                data-on-hover-message="Copy to clipboard"
+                                data-on-copy-success-message="{{'Copied!' | translate}}"
+                                data-on-hover-message="{{'Copy to clipboard' | translate}}"
                                 >
                                 <i class="icon-clippy"></i>
                             </button>
@@ -156,7 +182,7 @@
 
                   <div class="row" data-ng-if-end>
                     <div class="col-sm-3">
-                      Usage example
+                      <translate>Usage example</translate>
                     </div>
                     <div class="col-sm-9 text-left">
                       <code class="inline-code">
@@ -177,17 +203,17 @@
          </tbody>
          <tfoot ng-show="repos.length > 1">
            <tr class="totals" style="font-weight: bold;">
-             <td colspan="4" class="text-right">Totals:</td>
-             <td class="text-right">{{ summary | _:'map':'fileCount' | _:'compact' | _:'sum' | number }}</td>
-             <td class="text-right">{{ summary | _:'map':'fileSize' | _:'compact' | _:'sum' | bytes }}</td>
+             <td colspan="{{shouldDeduplicate ? '4' : '2'}}" class="text-right">Totals:</td>
+             <td class="text-right">{{ shouldDeduplicate ? summary : repos | _:'map':'fileCount' | _:'compact' | _:'sum' | number }}</td>
+             <td class="text-right">{{ shouldDeduplicate ? summary : repos | _:'map':'fileSize' | _:'compact' | _:'sum' | bytes }}</td>
            </tr>
          </tfoot>
        </table>
     </div>
 
     <div class="modal-footer">
-      <button class="t_button" data-ng-click="cancel();">Cancel</button>
-      <button class="t_button" data-ng-click="download()"><i class="icon-download"></i>Download</button>
+      <button class="t_button" data-ng-click="cancel();"><translate>Cancel</translate></button>
+      <button class="t_button" data-ng-click="download()"><i class="icon-download"></i><translate>Generate</translate></button>
       <button
         class="t_button"
         data-ng-repeat="repoData in repos"
@@ -195,7 +221,7 @@
         data-ng-disabled="repoData.manifestID || repoData.isGeneratingManifestID"
         data-ng-click="(!repoData.manifestID && !repoData.isGeneratingManifestID) && createManifestId(repoData.repoName, repoData)"
       >
-        Manifest ID
+        <translate>Manifest ID</translate>
       </button>
     </div>
 </div>

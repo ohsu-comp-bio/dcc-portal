@@ -52,8 +52,11 @@
       templateUrl: 'scripts/projects/views/project.html',
       controller: 'ProjectCtrl as ProjectCtrl',
       resolve: {
-        project: ['$stateParams', 'Projects', function ($stateParams, Projects) {
-          return Projects.one($stateParams.id).get();
+        project: ['$stateParams', 'Projects', 
+        function ($stateParams, Projects) {
+          return Projects.one($stateParams.id).get().then(function(project){
+            return project;
+          });
         }]
       }
     });
@@ -68,20 +71,26 @@
 
   module.controller('ProjectsCtrl',
     function ($q, $scope, $state, $filter, ProjectState, Page, Projects, CodeTable,
-               HighchartsService, Donors, Restangular, LocationService) {
+               HighchartsService, Donors, Restangular, LocationService, gettextCatalog, $timeout) {
 
     var _ctrl = this;
-    Page.setTitle('Cancer Projects');
+    Page.setTitle(gettextCatalog.getString('Cancer Projects'));
     Page.setPage('projects');
 
     _ctrl.Page = Page;
     _ctrl.state = ProjectState;
+    _ctrl.shouldRenderDeferredItems = false;
 
     _ctrl.setTab = function (tab) {
         _ctrl.state.setTab(tab);
       };
     _ctrl.setTab($state.current.data.tab);
 
+
+    var deferredTimeout;
+    function allowRenderDeferredItems() {
+      _ctrl.shouldRenderDeferredItems = true;
+    }
 
     $scope.$watch(function () {
        var currentStateData = angular.isDefined($state.current.data) ? $state.current.data : null;
@@ -97,6 +106,17 @@
       function (currentTab) {
         if (currentTab !== null) {
           _ctrl.setTab(currentTab);
+        }
+
+        if ( currentTab === 'details') {
+          if (!window.requestIdleCallback) {
+            window.clearTimeout(deferredTimeout);
+            deferredTimeout = $timeout(allowRenderDeferredItems, 100);
+          } else {
+            window.requestIdleCallback(() => {
+              $scope.$apply(allowRenderDeferredItems);
+            });
+          }
         }
       });
 
@@ -160,7 +180,7 @@
 
       return _.transform (filter, function (result, value, key) {
         if (_.has (pathMapping, key)) {
-          result = _.set (result, pathMapping [key], value);
+          result = _.set(result, pathMapping[key], value);
         }
       });
     }
@@ -182,7 +202,7 @@
         bar.total = 0;
         bar.stack = [];
 
-        gene.uiFIProjects.sort(function(a, b) { return a.count - b.count; }).forEach(function(p) {
+        gene.uiFIProjects.sort(function(a, b) { return a.count - b.count }).forEach(function(p) {
           bar.stack.push({
             name: p.id,
             y0: bar.total,
@@ -196,7 +216,7 @@
         });
         list.push(bar);
       });
-      return list.sort(function(a, b) { return b.total - a.total; });
+      return list.sort(function(a, b) { return b.total - a.total });
     }
 
     _ctrl.donutChartSubTitle = function () {
@@ -207,12 +227,15 @@
       var toHumanReadable = function (n, singular) {
         return '' + formatNumber (n) + ' ' + pluralizer (n, singular);
       };
-      var subtitle = toHumanReadable (_ctrl.totalDonors, 'Donor');
+
+      /// N Donors across N projects
+      var subtitle = toHumanReadable (_ctrl.totalDonors, gettextCatalog.getString('Donor'));
       var projects = _.get (_ctrl, 'projects.hits', undefined);
 
+      /// N Donors across N projects
       return subtitle + (_.isArray (projects) ?
-        ' across ' + toHumanReadable (projects.length, 'Project') : '');
-    };
+          ' ' + gettextCatalog.getString('across') + ' ' + toHumanReadable (projects.length, gettextCatalog.getString('Project')) : '');
+     };
 
     _ctrl.hasDonutData = function () {
       var donutData = _ctrl.donut;
@@ -293,7 +316,7 @@
         });
 
         cancelInFlightAggregationAjax();
-        if (stopIfNoHits (data)) {return;}
+        if (stopIfNoHits (data)) {return}
 
         var mutationFilter = {
           mutation: {
@@ -309,9 +332,7 @@
           // About to launch a new ajax getting project aggregation data. Cancel any active call.
           cancelInFlightAggregationAjax();
 
-          if (stopIfNoHits (genes)) {return;}
-
-          Page.stopWork();
+          if (stopIfNoHits (genes)) {return}
 
           geneDonorCountsRestangular = Restangular
             .one('ui/search/gene-project-donor-counts/' + _.map(genes.hits, 'id').join(','));
@@ -367,8 +388,8 @@
     }
 
     function refresh() {
-      Page.startWork();
-      
+      _ctrl.isLoadingData = true;
+
       // Needs to first grab every single project for projectIdLookupMap. Otherwise could be missing from map.
       Projects.getList({from: 1, size:100, filters:{}}).then(function(data) {
         _ctrl.projectIDLookupMap = _.mapKeys(data.hits, function(project) {
@@ -386,31 +407,23 @@
       return _.isEmpty (countryCode) ? defaultValue : 'flag flag-' + countryCode;
     };
 
+    _ctrl.viewInRepositories = () => {
+      LocationService.goToPath('/repositories', `filters={"file":{ "projectCode":{"is":[${ _.map(_ctrl.projects.hits, (project) => `"${project.id}"`, []) }]}}}`);
+    };
+
     $scope.$on('$locationChangeSuccess', function (event, dest) {
-
-      function hasPath(p) {
-        return dest.indexOf(p) >= 0;
+      if (dest.match(new RegExp('^' + window.location.protocol + '//' + window.location.host + '/projects'))) {
+        // NOTE: need to defer this call till next tick due to this running before filters are updated
+        setTimeout(refresh);
       }
-
-      // Sub tabs
-      if (hasPath('/projects/details') || hasPath('/projects/summary') || hasPath('/projects/history') ) {
-        refresh();
-        return;
-      }
-
-      // Main
-      if (dest.indexOf('projects') !== -1 && dest.indexOf('projects/') === -1) {
-        refresh();
-        return;
-      }
-
     });
 
     refresh();
   });
 
   module.controller('ProjectCtrl', function ($scope, $window, $q, $location, Page, PubMed, project,
-    Donors, Mutations, API, ExternalLinks, PCAWG, RouteInfoService, LoadState) {
+    Donors, Mutations, API, ExternalLinks, PCAWG, RouteInfoService, LoadState, SetService, Restangular, 
+    LocationService, SurvivalAnalysisLaunchService) {
     var _ctrl = this;
 
     Page.setTitle(project.id);
@@ -434,7 +447,6 @@
 
     _ctrl.hasExp = !_.isEmpty(project.experimentalAnalysisPerformedSampleCounts);
     _ctrl.isPCAWG = PCAWG.isPCAWGStudy;
-
 
     _ctrl.project = project;
     _ctrl.ExternalLinks = ExternalLinks;
@@ -469,6 +481,63 @@
 
     _ctrl.downloadSample = function () {
       $window.location.href = API.BASE_URL + '/projects/' + project.id + '/samples';
+    };
+
+    function createSets() {
+      var filter = {
+        donor: {
+          projectId: {
+            is: [project.id]
+          }
+        }
+      };
+
+      var donorParams = {
+        filters: filter,
+        size: 3000,
+        isTransient: true,
+        name: project.id +  ' Donors',
+        sortBy: 'ssmAffectedGenes',
+        sortOrder: 'DESCENDING',
+      };
+
+      var geneParams = {
+        filters: filter,
+        size: 50,
+        isTransient: true,
+        name: 'Top 50 ' + project.id + ' Mutated Genes',
+        sortBy: 'affectedDonorCountFiltered',
+        sortOrder: 'DESCENDING',
+      };
+
+      return {
+        donorSet: SetService.createEntitySet('donor', donorParams),
+        geneSet: SetService.createEntitySet('gene', geneParams)
+      };
+    }
+
+    function createOncoGrid(sets) {
+      var payload = {
+        donorSet: sets.donorSet,
+        geneSet: sets.geneSet
+      };
+      
+      return Restangular
+        .one('analysis')
+        .post('oncogrid', payload, {}, { 'Content-Type': 'application/json' })
+        .then(function (data) {
+          if (!data.id) {
+            throw new Error('Received invalid response from analysis creation');
+          }
+          $location.path('analysis/view/oncogrid/' + data.id);
+        });
+    }
+
+    _ctrl.openOncogrid = function() {
+      var sets = createSets();
+      $q.all(sets).then(function(response) {
+        createOncoGrid({donorSet: response.donorSet.id, geneSet: response.geneSet.id});
+      });
     };
 
     function refresh() {
@@ -507,6 +576,14 @@
       loadState.loadWhile($q.all([ fetchAndUpdateMutations, fetchAndUpdateStudies ]));
     }
 
+    /**
+       * Run Survival/Phenotypw analysis
+       */
+      _ctrl.launchSurvivalAnalysis = (entityType, entityId, entitySymbol) => {
+        var filters = _.merge(_.cloneDeep(LocationService.filters()), {donor: {projectId: {is: [project.id]}}});
+        SurvivalAnalysisLaunchService.launchSurvivalAnalysis(entityType, entityId, entitySymbol, filters, project.id);
+      };
+
     $scope.$on('$locationChangeSuccess', function (event, dest) {
       if (dest.indexOf('projects') !== -1) {
         refresh();
@@ -531,7 +608,7 @@
         _projectId = $stateParams.id || null,
         project = Projects.one(_projectId),
         FilterService = LocationService.getFilterService();
-    
+
     var loadState = new LoadState({scope: $scope});
 
     function success(genes) {
@@ -602,8 +679,14 @@
 
     function refresh() {
 
+      var params = LocationService.getPaginationParams('genes');
+        
       loadState.loadWhile(
-        Projects.one(_projectId).getGenes({filters: LocationService.filters()}).then(success)
+        Projects.one(_projectId).getGenes({
+          from: params.from,
+          size: params.size,
+          filters: LocationService.filters()
+        }).then(success)
       );
     }
 
@@ -617,6 +700,11 @@
         refresh();
       });
 
+      $scope.$on('$locationChangeSuccess', function (event, dest) {
+        if (dest.indexOf('/projects/' + project.id) !== -1) {
+          refresh();
+        }
+      });
 
     refresh();
   });
@@ -658,7 +746,6 @@
               size: 0,
               include: 'facets',
               filters: mutation.advQueryAll
-              //filters: {mutation: {id: {is: mutation.id}}}
             }).then(function (data) {
               mutation.uiDonors = data.facets.projectId.terms;
               mutation.uiDonors.forEach(function (facet) {
@@ -691,8 +778,16 @@
     }
 
     function refresh() {
+
+      var params = LocationService.getPaginationParams('mutations');
+
       loadState.loadWhile(
-        project.getMutations({include: 'consequences', filters: LocationService.filters()}).then(success)
+        project.getMutations({
+          from: params.from,
+          size: params.size,
+          include: 'consequences', 
+          filters: LocationService.filters()
+        }).then(success)
       );
     }
 
@@ -703,6 +798,12 @@
       }
 
       refresh();
+    });
+
+    $scope.$on('$locationChangeSuccess', function (event, dest) {
+      if (dest.indexOf('/projects/' + project.id) !== -1) {
+        refresh();
+      }
     });
 
     refresh();
@@ -740,8 +841,15 @@
     }
 
     function refresh() {
+
+      var params = LocationService.getPaginationParams('donors');
+
       loadState.loadWhile(
-        Projects.one(_projectId).getDonors({ filters: LocationService.filters()}).then(success)
+        Projects.one(_projectId).getDonors({
+          from: params.from,
+          size: params.size,
+          filters: LocationService.filters()
+        }).then(success)
       );
     }
 
@@ -752,6 +860,12 @@
       }
 
       refresh();
+    });
+
+    $scope.$on('$locationChangeSuccess', function (event, dest) {
+      if (dest.indexOf('/projects/' + project.id) !== -1) {
+        refresh();
+      }
     });
 
     refresh();
@@ -872,7 +986,7 @@
     this.handler = Restangular.oneUrl('pubmed', 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi');
 
     function format(xml) {
-      var pub = {}, json = X2JS.xml_str2json(xml).eSummaryResult.DocSum;
+      var pub = {}, json = X2JS.xml2js(xml).eSummaryResult.DocSum;
 
       function get(field) {
         return _.find(json.Item, function (o) {

@@ -1,5 +1,4 @@
 .analysis {
-   display: table;
    width: 100%;
    padding:0px;
 
@@ -147,6 +146,7 @@
    }
 
    .sidepanel {
+      display: inline-block;
       position: relative;
       vertical-align: top;
       margin-right: 1rem;
@@ -158,21 +158,17 @@
         position: absolute;
         top: 100%;
         right: 0;
-        width: 5px;
+        width: 1px;
         height: 62px;
         background-image: linear-gradient(to bottom, transparent, #fff), linear-gradient(to right, transparent, rgba(0,0,0,0.2));
       }
       .delete-button {
-        margin-top: 12px;
-        margin-right: 12px;
+        margin: 12px;
       }
    }
 
    .content {
-      //float: left;
-      //clear: right;
-      display: table-cell;
-      //width: 76%;
+      display: inline-block;
       
       min-height: 20rem; // Prevent complete collapse when switching content
 

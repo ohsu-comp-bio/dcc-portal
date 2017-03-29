@@ -38,10 +38,11 @@
       19:'Jun-15',
       20: 'Nov-15',
       21: 'May-16',
-      22: 'August-16'
+      22: 'August-16',
+      23: 'Dec-16'
     };
 
-  module.directive('donorHistory', function ($location, HighchartsService) {
+  module.directive('donorHistory', function ($location, HighchartsService, gettextCatalog) {
     return {
       restrict: 'E',
       replace: true,
@@ -70,18 +71,18 @@
 
         $scope.showPlot = false;
         $scope.defaultGraphHeight = 600;
-        $scope.defaultGraphTitle = 'Cumulative Count of Project Donors with Molecular Data in DCC by Release';
+        $scope.defaultGraphTitle = gettextCatalog.getString('Cumulative Count of Project Donors with Molecular Data in DCC by Release');
 
         var config = {
           margin:{top: 10, right: 40, bottom: 60, left: 40},
           height: $scope.defaultGraphHeight,
           width: 1000,
           colours: HighchartsService.primarySiteColours,
-          yaxis:{label:'# of Donors',ticks:8},
+          yaxis:{label: gettextCatalog.getString('# of Donors'),ticks:8},
           xaxis: {
-            label:'Release',
-            ticksValueRange: [4, 22],
-            secondaryLabel: function(data){return releaseDates[data];}
+            label: gettextCatalog.getString('Release'),
+            ticksValueRange: [4, 23],
+            secondaryLabel: function(data){return releaseDates[data]}
           },
           onClick: function(project){
             $scope.$emit('tooltip::hide');
@@ -90,7 +91,8 @@
           },
           tooltipShowFunc: function(elem, project, currentDonors,release) {
             function getLabel() {
-              return '<strong>'+project+'</strong><br>Release: '+release+'<br># of donors: '+currentDonors;
+              return '<strong>'+project+'</strong><br>' + gettextCatalog.getString('Release') + ':' + 
+              release + ' <br>' + gettextCatalog.getString('# of Donors') + ' ' + currentDonors;
             }
 
             $scope.$emit('tooltip::show', {
@@ -105,7 +107,7 @@
           },
           graphTitles: [
             $scope.defaultGraphTitle,
-            'Individual Count of Project Donors with Molecular Data in DCC by Release'],
+            gettextCatalog.getString('Individual Count of Project Donors with Molecular Data in DCC by Release')],
           offset: 'zero'
         };
 
@@ -130,7 +132,7 @@
               $scope.selected = newValue;
               var showPlot = shouldShowPlot ($scope.items);
               $scope.showPlot = showPlot;
-              if (! showPlot) {return;}
+              if (! showPlot) { return }
 
               chart = new dcc.StackedAreaChart (filterProjects ($scope.items, $scope.selected), config);
               renderChart (chart);
@@ -140,7 +142,7 @@
         $scope.$watch('items', function (newValue) {
           var showPlot = shouldShowPlot (newValue);
           $scope.showPlot = showPlot;
-          if (! showPlot) {return;}
+          if (! showPlot) { return }
 
           if (!chart && newValue) {
             chart = new dcc.StackedAreaChart(filterProjects($scope.items,$scope.selected),config);

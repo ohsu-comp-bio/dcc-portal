@@ -80,15 +80,8 @@
       return result;
     };
 
-    function _getSetShortHand(setId, setList) {
-      if (setList) {
-        return shortHandPrefix + (setList.indexOf(setId) + 1);
-      }
-      return setId;
-    }
-
-    this.getSetShortHand = _getSetShortHand;
-
+    this.getSetShortHand = (setId, setList) => setList ? `<em>${shortHandPrefix}</em><sub>${setList.indexOf(setId) + 1}</sub>` : setId;
+    this.getSetShortHandSVG = (setId, setList) => `<tspan font-style="italic">${shortHandPrefix}</tspan><tspan font-size="0.7em" baseline-shift="-15%">${setList.indexOf(setId) + 1}</tspan>`;
 
   });
 
@@ -97,20 +90,27 @@
   /**
    * Abstracts CRUD operations on entity lists (gene, donor, mutation)
    */
-  module.service('SetService',
-    function ($window, $location, $q, $timeout, Restangular, RestangularNoCache, API,
-              localStorageService, toaster, Extensions, Page, FilterService, RouteInfoService) {
+  module.constant('SetServiceConstants', {
+    SET_EVENTS: {
+      SET_ADD_EVENT: 'event.set.added',
+      SET_REMOVE_EVENT: 'event.set.removed',
+      SET_CHANGE_EVENT: 'event.set.changed',
+    }
+  }).service('SetService',
+    function ($window, $location, $q, $timeout, Restangular, $rootScope, RestangularNoCache, API, SetServiceConstants,
+              localStorageService, toaster, Extensions, Page, FilterService, RouteInfoService, gettextCatalog) {
 
     var LIST_ENTITY = 'entity';
     var dataRepoUrl = RouteInfoService.get ('dataRepositories').href;
     var _service = this;
 
+    _service.setServiceConstants = SetServiceConstants;
     // For application/json format
     function params2JSON(type, params, derived) {
       var data = {};
       
       if (typeof derived === 'undefined' || !derived) {
-        data.filters = encodeURI(JSON.stringify(params.filters));
+        data.filters = params.filters;
         data.size = params.size || 0;
       }
       
@@ -126,8 +126,6 @@
       if (angular.isDefined(params.filters) && !angular.isDefined(params.sortBy)) {
         if (type === 'donor') {
           data.sortBy = 'ssmAffectedGenes';
-        } else if (type === 'gene') {
-          data.sortBy = 'affectedDonorCountFiltered';
         } else {
           data.sortBy = 'affectedDonorCountFiltered';
         }
@@ -156,7 +154,7 @@
       var filters = {};
     	var type = 'file';
       filters[type] = {};
-      filters[type][Extensions.ENTITY] = {is: [set.id]};
+      filters[type] = {donorId: {is: [Extensions.ENTITY_PREFIX + set.id]}};
 
       return dataRepoUrl + '?filters=' + angular.toJson(filters);
     };
@@ -186,19 +184,25 @@
     *
     * Create a new set from
     */
-    _service.addSet = function(type, params) {
+    _service.addSet = function(type, params, isExternal) {
       var promise = null;
       var data = params2JSON(type, params);
       var addSetSaving;
 
       if(! data.isTransient){
         addSetSaving = _service.savingToaster(data.name);
-      }      
+      } 
 
-      promise = Restangular.one('entityset')
-                .post(undefined, data, {async: 'false'}, {'Content-Type': 'application/json'});
+      if(isExternal){
+        promise = Restangular.one('entityset').one('external')
+          .post(undefined, data, {}, {'Content-Type': 'application/json'});
+      } else{
+        promise = Restangular.one('entityset')
+          .post(undefined, data, {async: 'false'}, {'Content-Type': 'application/json'});
+      }
 
-      promise.then(function(data) {        
+      promise.then(function(data) {
+        data = data.plain();
         
         if (! data.id) {
           return;
@@ -210,54 +214,34 @@
         }
 
         data.type = data.type.toLowerCase();
-
-        setList.unshift(data);
-        _service.refreshList();
-
-        localStorageService.set(LIST_ENTITY, setList);
-        
+        _service.add(data);
         _service.saveSuccessToaster(data.name);
         toaster.clear(addSetSaving);
-
       });
       
       return promise;
     };
 
+    _service.renameSet = (setId, newName) => {
+      Restangular.one('entityset', setId).customPUT(`name=${newName}`, null, null, {'Content-Type': 'application/x-www-form-urlencoded'});
+      setList.find(x => x.id === setId).name = newName;
+      localStorageService.set(LIST_ENTITY, setList);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_CHANGE_EVENT);
+    };
+
+    _service.modifySet = async (existingSet, entitysetDefinition, operation) => {
+      const validOperations = ['add', 'remove'];
+      invariant(validOperations.includes(operation), `operation must be one of ${JSON.stringify(validOperations)}`);
+      const savingToaster = _service.savingToaster(existingSet.name);
+      const resource = {add: 'unions', remove: 'differences'}[operation];
+      const updatedEntityset = await Restangular.one(`entityset/${existingSet.id}/${resource}`).customPOST(entitysetDefinition, null, null, {'Content-Type': 'application/json'});
+      _service.update(Object.assign({}, updatedEntityset, {type: updatedEntityset.type.toLowerCase()}));
+      toaster.clear(savingToaster);
+      _service.saveSuccessToaster(existingSet.name);
+    };
+
     _service.addExternalSet = function(type, params) {
-      var promise = null;
-      var data = params2JSON(type, params);
-      var addSetSaving;
-
-      if(! data.isTransient){
-        addSetSaving = _service.savingToaster(data.name);
-      }
-
-      promise = Restangular.one('entityset').one('external')
-        .post(undefined, data, {}, {'Content-Type': 'application/json'});
-
-      promise.then(function(data) {
-        if (! data.id) {
-          return;
-        }
-
-        // If flagged as transient, don't save to local storage
-        if (data.subtype === 'TRANSIENT') {
-          return;
-        }
-
-        data.type = data.type.toLowerCase();
-
-        setList.unshift(data);
-        _service.refreshList();
-
-        localStorageService.set(LIST_ENTITY, setList);
-
-        _service.saveSuccessToaster(data.name);
-        toaster.clear(addSetSaving);
-      });
-
-      return promise;
+      return _service.addSet(type, params, true);
     };
 
     _service.createFileSet = function (params) {
@@ -357,17 +341,11 @@
 
       promise.then(function(data) {
         if (! data.id) {
-          console.log('there is an error in creating derived set');
-          return;
+          throw new Error('there is an error in creating derived set', data);
         }
 
         data.type = data.type.toLowerCase();
-
-        setList.unshift(data);
-        _service.refreshList();
-
-        localStorageService.set(LIST_ENTITY, setList);
-
+        _service.add(data);
         _service.saveSuccessToaster(data.name);
         toaster.clear(addSetSaving);
       });
@@ -419,14 +397,17 @@
 
     /****** Local storage related API ******/
     _service.getAll = function() {
+      setList = localStorageService.get(LIST_ENTITY) || [];
       return setList;
     };
 
-    _service.getAllGeneSets = function() {
-      return _.filter(setList, function(s) {
-        return s.type === 'gene';
-      });
-    };
+    _service.getAllGeneSets = () => _.filter(setList, (s) => s.type === 'gene');
+
+    _service.getAllDonorSets = () => _.filter(setList, (s) => s.type === 'donor');
+
+    _service.getAllMutationSets = () => _.filter(setList, (s) => s.type === 'mutation');
+
+    _service.getAllFileSets = () => _.filter(setList, (s) => s.type === 'file');
 
     _service.initService = function() {
 
@@ -441,7 +422,23 @@
         return ids.indexOf(list.id) >= 0;
       });
       localStorageService.set(LIST_ENTITY, setList);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_REMOVE_EVENT);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_CHANGE_EVENT);
       return true;
+    };
+
+    _service.add = (entityset) => {
+      setList = localStorageService.get(LIST_ENTITY) || [];
+      setList.unshift(entityset);
+      _service.refreshList();
+      localStorageService.set(LIST_ENTITY, setList);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_ADD_EVENT);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_CHANGE_EVENT);
+    };
+
+    _service.update = (entityset) => {
+      _service.remove(entityset.id);
+      _service.add(entityset);
     };
 
     _service.remove = function(id) {
@@ -449,6 +446,8 @@
         return list.id === id;
       });
       localStorageService.set(LIST_ENTITY, setList);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_REMOVE_EVENT);
+      $rootScope.$broadcast(_service.setServiceConstants.SET_EVENTS.SET_CHANGE_EVENT);
       return true;
     };
 
@@ -575,17 +574,89 @@
     };
 
     _service.savingToaster = function(setName){
-      return toaster.pop('warning', 'Saving ' + setName,'Please wait', 0, 'trustedHtml');
+      /// ${savedSet} is a noun
+      return toaster.pop('warning', _.template(gettextCatalog.getString('Saving ${savedSet}'))({savedSet: setName}), 
+      /// 
+        gettextCatalog.getString('Please wait'), 0, 'trustedHtml');
     };
 
     _service.saveSuccessToaster = function(setName){
-      return toaster.pop('success', setName + ' Saved',
-             'View in <a href="/analysis/sets">Data Analysis</a>', 4000, 'trustedHtml');
+      /// ${savedSet} is a noun
+      return toaster.pop('success', _.template(gettextCatalog.getString('${savedSet} Saved'))({savedSet : setName}),
+      /// 
+        gettextCatalog.getString('View in <a href="/analysis/sets">Data Analysis</a>'), 4000, 'trustedHtml');
     };
 
     // Initialize
     var setList = _service.initService();
     _service.refreshList();
+  });
+
+  module.service('SetNameService', function(LocationService, FilterService, SetService, FiltersUtil, 
+    CompoundsService, GeneSymbols, $filter){
+    
+    var _service = this;
+
+    const maxLength = 61;
+
+    // Function to get UI friendly filter
+    _service.getSetFilters = function() {
+      var ids = LocationService.extractSetIds(FilterService.filters());
+      return ids.length ? SetService.getMetaData(ids).then(function (results) {
+            return FiltersUtil.buildUIFilters (FilterService.filters(), SetService.lookupTable(results.plain()));
+          }) : Promise.resolve(FiltersUtil.buildUIFilters(FilterService.filters(), {}));
+    };
+
+    // Returns the promise to get the set name
+    _service.getSetName = function(filters, setType) {
+      if (_.isEmpty(filters)) {
+        return Promise.resolve('All ' + _.capitalize(setType) + 's');
+      }
+
+      // Going throught filters to create a custom Collection of filters
+      var promises = _(filters).map(function (filter, filterKey) {
+        return _.map(filter, function (facet, facetKey) {
+          return facet.is.map(function (value) {
+            return { term: value.term, facetName: value.controlFacet, facetGroup: filterKey + facetKey, operator: 'is' };
+          }).concat((facet.not || []).map(function (value) {
+            return { term: value.term, facetName: value.controlFacet, facetGroup: filterKey + facetKey, operator: 'not' };
+          }));
+        });
+      })
+      .flattenDeep()
+      .groupBy('facetGroup')
+      .map(function (facetTermWrappers) {
+        var partialNamesRequests = facetTermWrappers.map(function (termWrapper) {
+          // If filter is compound, need to return CompoundService promise that will get the name based on compound ID
+          if (termWrapper.facetName === 'compoundId') {
+            return CompoundsService.getCompoundByZincId(termWrapper.term).then(function (compound) {
+              return _.capitalize(compound.name);
+            });
+            // Following condition will get the Gene name based on ID
+          } else if (termWrapper.facetName === 'id' && termWrapper.term.indexOf('ENSG') > -1) {
+            return GeneSymbols.resolve(termWrapper.term).then(function (ensemblIdGeneSymbolMap) {
+              return _.get(ensemblIdGeneSymbolMap.plain(), termWrapper.term);
+            });
+          } else if(termWrapper.term === '_missing'){
+            return Promise.resolve('No ' + $filter('trans')(termWrapper.facetName) + ' Data');
+          } else {
+            return Promise.resolve($filter('trans')(termWrapper.term, termWrapper.facetName));
+          }
+        });
+
+        // Returning Promise Object of names joined by '/' in a single facet term.
+        return Promise.all(partialNamesRequests).then(function (partialNames) {
+          return partialNames.join(' / ');
+        });
+      })
+      .value();
+
+      return Promise.all(promises)
+        .then(function (nameParts) {
+          var name = nameParts.join(', ');
+          return name.length > maxLength ? name.slice(0, maxLength - name.length).concat('...') : name;
+        });
+    };
   });
 
 })();

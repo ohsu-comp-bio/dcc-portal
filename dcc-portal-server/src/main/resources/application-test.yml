@@ -27,7 +27,8 @@ spring.profiles: test
 # Datasource
 spring.datasource:
   driver-class-name: org.h2.Driver
-  url: jdbc:h2:mem:portal;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;INIT=runscript from 'classpath:sql/schema.sql'
+  # url: jdbc:h2:mem:portal;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;INIT=runscript from 'classpath:sql/schema.sql'
+  url: jdbc:h2:file:${java.io.tmpdir}/db;MULTI_THREADED=TRUE;AUTO_SERVER=TRUE;MODE=PostgreSQL;INIT=runscript from 'classpath:sql/schema.sql'
   username:
   password:
   max-active: 10
@@ -81,9 +82,9 @@ hazelcast:
 # ElasticSearch index and hosts
 elastic:
   indexName: icgc-release
-  repoIndexName: icgc-repository-test
+  repoIndexName: icgc-repository
   nodeAddresses:
-    - host: elasticsearch1.res.oicr.on.ca
+    - host: localhost
       port: 9300
       
   # List of TransportClient settings. 

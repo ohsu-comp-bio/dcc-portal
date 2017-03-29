@@ -78,10 +78,10 @@
   module
     .constant('DEFAULT_SELECTED_TAB_CONSTANT', 'analysis')
     .controller('AnalysisController', function ($scope, $timeout, $state, $location, Page,
-                                                AnalysisService, DEFAULT_SELECTED_TAB_CONSTANT) {
+                                                AnalysisService, DEFAULT_SELECTED_TAB_CONSTANT, gettextCatalog) {
 
     Page.setPage('analysis');
-    Page.setTitle('Analysis');
+    Page.setTitle(gettextCatalog.getString('Analysis'));
 
 
     $scope.currentTab = $state.current.data.tab || DEFAULT_SELECTED_TAB_CONSTANT;
@@ -105,7 +105,6 @@
 
 
     $scope.newAnalysis = function() {
-      console.log('new analysis request');
 
       if ($scope.analysisId !== undefined) {
         $location.path('analysis');
@@ -145,7 +144,7 @@
     function init() {
       $timeout.cancel(pollTimeout);
       $scope.error = null;
-      $scope.analysisResult = null;
+      $scope.analysisResult = undefined;
 
       if (! $scope.analysisId || ! $scope.analysisType) {
         return;
@@ -163,7 +162,7 @@
         }
 
         if (data.state === 'FINISHED') {
-          $scope.analysisResult = null;
+          $scope.analysisResult = undefined;
           $timeout(function() {
             $scope.analysisResult = data;
           }, 150);
@@ -200,44 +199,52 @@
 
   var module = angular.module('icgc.analysis.services', ['restangular']);
 
-  var analysesStrings = {
+  module.service('AnalysisService', function(RestangularNoCache, localStorageService, gettextCatalog) {
+    var ANALYSIS_ENTITY = 'analysis';
+    var analysisList = [];
+    var analysesStrings = {
+      // wdl: {
+      //   name: 'WDL Operations',
+      //   description: 'Finally a workflow language meant to be read and written by humans.',
+      //   demoDescription: '"Hello world" WDL workflows in the CCC Context. WDL script: workflow, task, call, command and output.'
+      // },
       set: {
-        name: 'Set Operations',
-        description: 'Display Venn diagram and find out intersection or union, etc. of your sets of the same type.',
-        demoDescription: 'Compare high impact mutations in brain cancers across GBM-US, LGG-US, and PCBA-DE.'
+        name: gettextCatalog.getString('Set Operations'),
+        description: gettextCatalog.getString('Display Venn diagram and find out intersection or union,' +
+          ' etc. of your sets of the same type.'),
+        demoDescription: gettextCatalog.getString('Compare high impact mutations in brain cancers across' +
+          ' GBM-US, LGG-US, and PCBA-DE.')
       },
       get union () {
         return this.set;
       },
       enrichment: {
-        name: 'Enrichment Analysis',
-        description: 'Find out statistically significantly over-represented groups of gene sets ' +
-        '(e.g. Reactome pathways) when comparing with your gene set.',
-        demoDescription: 'Perform enrichment analysis on top 50 genes in Cancer Gene Census.'
+        name: gettextCatalog.getString('Enrichment Analysis'),
+        description: gettextCatalog.getString('Find out statistically significantly over-represented groups of ' +
+          'gene sets (e.g. Reactome pathways) when comparing with your gene set.'),
+        demoDescription: gettextCatalog.getString('Perform enrichment analysis on top 50 genes in Cancer Gene Census.')
       },
       phenotype: {
-        name: 'Survival Analysis / Phenotype Comparison',
-        description: 'Display the survival analysis of your donor sets and compare some characteristics' +
-        ' such as gender, vital status and age at diagnosis between your donor sets.',
-        demoDescription: 'Display survival analysis and compare phenotypes across brain, breast, and ' + 
-        'colorectal cancer donors.'
+        name: gettextCatalog.getString('Cohort Comparison'),
+        description: gettextCatalog.getString('Display the survival analysis of your donor sets and compare some' +
+        ' characteristics such as gender, vital status and age at diagnosis between your donor sets.'),
+        demoDescription: gettextCatalog.getString('Display survival analysis and compare phenotypes across ' +
+          'donors with pancreatic cancer with and without mutations in the gene KRAS.')
       },
       oncogrid: {
-        name: 'OncoGrid',
-        description: 'Display OncoGrid diagram to visualize genetic alteration occurrences affecting a set of donors.',
-        demoDescription: 'Generate an OncoGrid using top 75 donors and genes for PCAWG liver projects.'
+        name: gettextCatalog.getString('OncoGrid'),
+        description: gettextCatalog.getString('Display OncoGrid diagram to visualize genetic alteration occurrences' +
+          ' affecting a set of donors.'),
+        demoDescription: gettextCatalog.getString('Generate an OncoGrid using top 75 donors and genes for PCAWG' +
+        ' liver projects.')
       },
       survival: {
-        name: 'Survival Analysis',
-        description: 'Display the survival analysis of your donor sets and compare some characteristics' +
-        ' such as gender, vital status and age at diagnosis between your donor sets.',
+        name: gettextCatalog.getString('Survival Analysis'),
+        description: gettextCatalog.getString('Display the survival analysis of your donor sets and compare some' +
+        ' characteristics such as gender, vital status and age at diagnosis between your donor sets.'),
         demoDescription: 'TBD'
       }
-  };
-
-  module.service('AnalysisService', function(RestangularNoCache, localStorageService) {
-    var ANALYSIS_ENTITY = 'analysis';
-    var analysisList = [];
+    };
 
     this.getAnalysis = function(id, type) {
       return RestangularNoCache.one('analysis/' + type , id).get();

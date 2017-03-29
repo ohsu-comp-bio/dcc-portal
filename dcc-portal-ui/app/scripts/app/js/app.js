@@ -15,10 +15,6 @@
  * WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-(function () {
-  'use strict';
-
-
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
   // Define global namespace for the icgc app to be used by third parties as well as in the console.
   ////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -200,17 +196,21 @@
     'ui.scrollfix',
     'ui.bootstrap.modal',
     'ui.bootstrap.position',
+    'ui.bootstrap.pagination',
     'template/modal/backdrop.html',
     'template/modal/window.html',
+    'template/pagination/pagination.html',
     'ui.router',
     'infinite-scroll',
     'angular-lodash',
     'angularytics',
     'angular-loading-bar',
-    'btford.markdown',
+    'hc.marked',
     'LocalStorageModule',
     'toaster',
     'dndLists',
+    'gettext',
+    'xeditable',
 
 
     // 3rd party
@@ -237,8 +237,10 @@
     'icgc.browser',
     'icgc.donorlist',
     'icgc.genelist',
+    'icgc.entitySetUpload',
     'icgc.genesets',
     'icgc.visualization',
+    'icgc.wdl',
     'icgc.enrichment',
     'icgc.sets',
     'icgc.analysis',
@@ -255,6 +257,7 @@
     'icgc.pathways',
     'icgc.historyManager',
     'icgc.survival',
+    'icgc.404',
 
     // old
     'app.ui',
@@ -326,13 +329,6 @@
           }
 
           _cancellableRequests.splice(indexAt, 1);
-
-          //console.log('Removing deferred from abort cache: ', deferredKey);
-
-
-           /*if (_cancellableRequests.length === 0) {
-               console.info('Request abort cache is empty!');
-           }*/
         }
 
         // Create a wrapped request function that will allow us to create http requests that
@@ -366,12 +362,10 @@
 
             requestPromise.then(
               function(data) {
-                //console.log('Success:', restangularObject, data);
                 _deletePromiseAbortCache(abortDeferred);
                 deferred.resolve(data);
               },
               function(error) {
-                //console.log('Failure:', restangularObject);
                 _deletePromiseAbortCache(abortDeferred);
                 deferred.reject(error);
               }
@@ -466,7 +460,6 @@
 
           for (var i = 0; i < abortRequestLength; i++) {
             var requestURL = requestUrls[i];
-            console.log('Cancelling HTTP Request: ', requestURL);
             _cancellableRequests[requestURL].resolve();
           }
 
@@ -478,14 +471,27 @@
       }]);
 
     })
-    .run(function($state, $location, $window, $timeout, $rootScope, cfpLoadingBar, HistoryManager) {
+    .run(function($state, $location, $window, $timeout, $rootScope, cfpLoadingBar, HistoryManager, gettextCatalog, Settings) {
 
-      HistoryManager.addToIgnoreScrollResetWhiteList(['analysis','advanced', 'compound']);
+      // Setting the initial language to English CA.
+      gettextCatalog.setCurrentLanguage('en_CA');
 
-      // Add UI Router Debug if there is a fatal state change error
-      $rootScope.$on('$stateChangeError', function () {
-        console.error('State Change Error Occurred. Error occurred with arguments: ', arguments);
+      HistoryManager.addToIgnoreScrollResetWhiteList(['analysis','advanced', 'compound', 'dataRepositories', 'donor', 'beacon', 'project', 'gene']);
+
+      $rootScope.$on('$stateChangeError', function(event, toState, toParams, fromState, fromParams, error) {
+        if(error.status === 404){
+          $state.go('404', {page: toState.name, id: toParams.id, url: toState.url}, {location: false});
+        } else {
+          console.error(error.message);
+          console.error(error.stack);
+        }
       });
+
+      $rootScope.$on('$stateNotFound', function() {
+        $state.go('404', {}, {location: false});
+      });
+
+      Settings.get().then(ICGC_SETTINGS => { $rootScope.ICGC_SETTINGS = ICGC_SETTINGS });
 
       function _initProgressBarRunOnce() {
         var _shouldDisableLoadingBar = true,
@@ -493,14 +499,12 @@
             _debounceDelayMS = 200;
 
         var deregisterLoadingFn = $rootScope.$on('cfpLoadingBar:loading', function () {
-          //console.log('Progress Started!');
           _shouldDisableLoadingBar = false;
         });
 
         var deregisterCompletedFn = $rootScope.$on('cfpLoadingBar:completed', function () {
           // Disable the loading bar after the debounced run first run
           _shouldDisableLoadingBar = true;
-          //console.log('Progress Completed!');
 
           if (_timeoutHandle) {
             clearTimeout(_timeoutHandle);
@@ -508,7 +512,6 @@
 
           _timeoutHandle = setTimeout(function () {
             if (_shouldDisableLoadingBar) {
-              //console.log('Progress Disabled!');
               cfpLoadingBar.enabled(false);
               deregisterLoadingFn();
               deregisterCompletedFn();
@@ -533,7 +536,7 @@
 
   module.config(function ($locationProvider, $stateProvider, $urlRouterProvider, $compileProvider,
                           AngularyticsProvider, $httpProvider, RestangularProvider,
-                          markdownConverterProvider, localStorageServiceProvider, API) {
+                          markedProvider, localStorageServiceProvider, API) {
 
     // Disables debugging information
     $compileProvider.debugInfoEnabled(false);
@@ -549,9 +552,6 @@
 
       return function(data, operation, model) {
         // perform this check dynamically the computation time is neglible so this shouldn't impede on perfomance
-        if ($icgcApp.getAPI().isDebugEnabled()) {
-          console.log(requestType + ' Method: ', operation.toUpperCase(), '\nModel: ', model, '\nData: ', data);
-        }
         return data;
       };
 
@@ -560,7 +560,10 @@
     // Function that returns a interceptor function
     // that intercepts all requests and redacts responses from requests
     // that have no project filter
-    window._whiteListedProjects = ["BRCA-US","BRCA-EU"];
+    window._whiteListedProjects = ["XXXX-NONE-XXXX"];
+    function _logAuthorization(msg) {
+      console.log("_logAuthorization",window.location.href , JSON.stringify(msg));
+    }
     function _getResponseSecurityFilter() {
       // see https://github.com/mgonto/restangular#addresponseinterceptor
       return function(data,operation,what,url,response,deferred) {
@@ -574,19 +577,50 @@
         try {
           if (url.includes("api/v1/donors") && data.facets.projectId.terms ) {
             data.facets.projectId.terms = data.facets.projectId.terms.filter(function(t){return _whiteListedProjects.includes(t.term) });
+            _logAuthorization({"url":url, "redact_response": ["data.facets.projectId.terms"] });
           }
         } catch (e) { }
-        try {
-          if (url.includes("api/v1/mutations")  ) {
-            console.log("REDACT ME",data);
-          }
-        } catch (e) { }
+        // try {
+        //   if (url.includes("api/v1/mutations")  ) {
+        //     console.log("REDACT ME",data);
+        //   }
+        // } catch (e) { }
 
         try {
           if (_.has(data, 'termFacets.projectCode.terms')) {
             data.termFacets.projectCode.terms = _.remove(data.termFacets.projectCode.terms, function(e) {
               return _whiteListedProjects.includes(e.term);
             });
+            _logAuthorization({"url":url, "redact_response": ["data.termFacets.projectCode.terms"] });
+          }
+        } catch (e) { }
+
+        //        api/v1/mutations
+        try {
+          if (_.has(data, 'occurrences')) {
+            // remove projects we don't have access to
+            data.occurrences = _.remove(data.occurrences, function(e) {
+              return _whiteListedProjects.includes(e.projectId);
+            });
+            // adjust summary counts
+            if (_.has(data, 'affectedProjectCount')) {
+              var affectedProjects = _.reduce(data.occurrences, function(result, value, key) {
+                result[value.projectId] = (result[value.projectId]||0) + 1;
+                return result;
+              }, {});
+              data.affectedProjectCount = _.keys(affectedProjects).length;
+              data.affectedDonorCountTotal = _.reduce(affectedProjects, function(result, value, key) {
+                return result + value;
+              }, 0);
+            }
+            _logAuthorization({"url":url, "redact_response": ["data.occurrences","data.affectedProjectCount","data.affectedDonorCountTotal"] });
+          }
+        } catch (e) { }
+
+        try {
+          if (url.includes("api/v1/settings")  ) {
+            data.ssoCCC = 'http://' + location.hostname + ":3000?" ;
+            _logAuthorization({"url":url, "redact_response": ["ssoCCC"] });
           }
         } catch (e) { }
 
@@ -612,7 +646,7 @@
         }
         // generic project filter
         var no_projectfilter = ["mutations","genes","mutations","donors","gene","occurrences", "repository/files","repository/files/summary"] ;
-        var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts"];
+        var no_projectfilter_urls =  ["gene-project-donor-counts","genes","mutations/counts","donor-mutations"];
         var doNotfilterByProject = 0 ;
         if (!queryParams.filters) {
           doNotfilterByProject++;
@@ -628,7 +662,6 @@
 
         var filtered = false;
         if (!doNotfilterByProject) {
-          console.log("filtering",url);
           filtered = true;
 
           if (!queryParams.filters.project) {
@@ -641,14 +674,17 @@
                 _intersection = _whiteListedProjects;
               }
               queryParams.filters.project.id.is = _intersection;
+              _logAuthorization({"url":url, "filter": queryParams.filters });
             }
             if(queryParams.filters.project.id.not) {
               var _projects = queryParams.filters.project.id.not;
               delete queryParams.filters.project.id.not;
               queryParams.filters.project.id.is = _.difference(_whiteListedProjects,_projects);
+              _logAuthorization({"url":url, "filter": queryParams.filters });
             }
           } else {
             queryParams.filters.project.id = {"is":_whiteListedProjects};
+            _logAuthorization({"url":url, "filter": queryParams.filters });
           }
 
         }
@@ -664,13 +700,17 @@
           if (!queryParams.filters.file.projectCode) {
             queryParams.filters.file.projectCode = {} ;
             queryParams.filters.file.projectCode.is = _whiteListedProjects;
+            _logAuthorization({"url":url, "filter": queryParams.filters });
           }
         }
         if (!filtered && what === "donors") {
           if (!queryParams.filters.donor) {
             queryParams.filters.donor = {} ;
           }
-          queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
+          if (!queryParams.filters.donor.projectId) {
+            queryParams.filters.donor.projectId = {"is":_whiteListedProjects};
+          }
+          _logAuthorization({"url":url, "filter": queryParams.filters });
         }
 
         /** TODO redact responses from
@@ -683,8 +723,25 @@
     RestangularProvider.setRequestInterceptor(_getInterceptorDebugFunction('Request'));
     RestangularProvider.setResponseInterceptor(_getInterceptorDebugFunction('Reponse'));
 
-    RestangularProvider.addFullRequestInterceptor(_getRequestSecurityFilter());
-    RestangularProvider.addResponseInterceptor(_getResponseSecurityFilter());
+//    RestangularProvider.addFullRequestInterceptor(_getRequestSecurityFilter());
+//    RestangularProvider.addResponseInterceptor(_getResponseSecurityFilter());
+
+    RestangularProvider.addFullRequestInterceptor(function (element, operation, route, url, headers, params, httpConfig) {
+      if (params && params.filters && JSON.stringify(params.filters).match('ES:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')) {
+        return {
+          httpConfig: {cache: false}
+        };
+      }
+    });
+
+    RestangularProvider.addFullRequestInterceptor(function (element, operation, route, url, headers, params, httpConfig) {
+      var ohsutoken = window.localStorage.getItem('ohsutoken') ;
+      if (ohsutoken) {
+        var myHeaders = headers || {};
+        myHeaders['Authorization'] = 'Bearer ' + ohsutoken;
+        return {headers: myHeaders};
+      }
+    });
 
     RestangularProvider.setDefaultHttpFields({cache: true});
 
@@ -699,71 +756,36 @@
       'team', {
         url: '/team',
         templateUrl: '/scripts/static/views/team.html',
-        controller: ['Page', function (Page) {
-          Page.setTitle('The Team');
+        controller: function (Page, gettextCatalog) {
+          Page.setTitle(gettextCatalog.getString('The Team'));
           Page.setPage('entity');
-        }]
+        }
       });
 
-    // All else redirect to home
-    $urlRouterProvider.otherwise(function($injector, $location) {
-
-      $injector.invoke(['Notify', 'Page', function(Notify, Page) {
-        Page.setPage('error');
-        Notify.setMessage('Cannot find: ' + $location.url());
-        Notify.showErrors();
-      }]);
+    // If invalid route is requested
+    $urlRouterProvider.otherwise(function ($injector, $location){
+      return '/404?page=' + $location.url();
     });
 
-    markdownConverterProvider.config({
-      extensions: ['table']
-    });
+    markedProvider.setOptions({ gfm: true });
 
     localStorageServiceProvider.setPrefix('icgc');
   });
 
   module.run(function ($http, $state, $timeout, $interval, $rootScope, $modalStack,
-    Restangular, Angularytics, Compatibility, Notify, Page) {
-
-    var ignoreNotFound = [
-      '/analysis/',
-      '/list',
-      '/ui/reactome'
-    ];
+    Restangular, Angularytics, Compatibility, Notify) {
 
     Restangular.setErrorInterceptor(function (response) {
 
       if (response.status !== 401 && response.status !== -1) {
-        console.error ('Response Error: ', toJson (response));
+        console.error('Response Error: ', toJson (response));
       }
-
+      
       if (response.status === 500) {
-        Notify.setMessage ('' + response.data.message || response.statusText);
+        Notify.setParams(response);
         Notify.showErrors();
       } else if (response.status === 404) {
-
-        // Ignore 404's from specific end-points, they are handled locally
-        // FIXME: Is there a better way to handle this within restangular framework?
-        var ignore = false;
-        ignoreNotFound.forEach(function(endpoint) {
-          if (response.config && response.config.url.indexOf(endpoint) >= 0) {
-            ignore = true;
-          }
-        });
-        if (ignore === true) {
-          return true;
-        }
-
-        if (response.data.message) {
-          Page.setPage('error');
-          Notify.setMessage(response.data.message);
-          Notify.showErrors();
-        }
-      } else if (response.status === 400) {
-        if (response.data.message) {
-          Notify.setMessage('' + response.data.message);
-        }
-        Notify.showErrors();
+        console.error(response.data.message);
       }
     });
 
@@ -799,19 +821,22 @@
 
     // Order matters, this is in most important to least important (For enrichment analysis)
     GENE_SET_ROOTS: [
-      {type: 'pathway', id: null, name: 'Reactome Pathways', universe: 'REACTOME_PATHWAYS'},
-      {type: 'go_term', id: 'GO:0003674', name: 'GO Molecular Function', universe: 'GO_MOLECULAR_FUNCTION'},
-      {type: 'go_term', id: 'GO:0008150', name: 'GO Biological Process', universe: 'GO_BIOLOGICAL_PROCESS'},
-      {type: 'go_term', id: 'GO:0005575', name: 'GO Cellular Component', universe: 'GO_CELLULAR_COMPONENT'},
-      {type: 'curated_set', id: 'GS1', name: 'Cancer Gene Census', universe: null}
+      {type: 'pathway', id: null, name: gettext('Reactome Pathways'), universe: 'REACTOME_PATHWAYS'},
+      {type: 'go_term', id: 'GO:0003674', name: gettext('GO Molecular Function'), universe: 'GO_MOLECULAR_FUNCTION'},
+      {type: 'go_term', id: 'GO:0008150', name: gettext('GO Biological Process'), universe: 'GO_BIOLOGICAL_PROCESS'},
+      {type: 'go_term', id: 'GO:0005575', name: gettext('GO Cellular Component'), universe: 'GO_CELLULAR_COMPONENT'},
+      {type: 'curated_set', id: 'GS1', name: gettext('Cancer Gene Census'), universe: null}
     ]
   });
 
+  module.constant('Branding',window.$ICGC_BRANDING);
 
-  module.controller('AppCtrl', function ($scope, Page) {
+  module.controller('AppCtrl', function ($scope, Page, Settings) {
     var _ctrl = this;
     _ctrl.appLoaded = true;
     _ctrl.Page = Page;
+    _ctrl.authEnabled = false;
+    _ctrl.mirror = {};
 
     // for document level clicks
     _ctrl.handleApplicationClick = function () {
@@ -822,5 +847,13 @@
       $scope.$emit('tooltip::hide');
     });
 
+    Settings.get().then(function(setting){
+       _ctrl.authEnabled = setting.authEnabled;
+       _ctrl.mirror = setting.mirror;
+    });
+
   });
-})();
+
+  function gettext(string){
+    return string;
+  }

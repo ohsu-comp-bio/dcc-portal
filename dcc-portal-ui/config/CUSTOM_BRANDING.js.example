@@ -1,0 +1,10 @@
+/* eslint-disable quotes */
+
+module.exports = {
+    "footerCaption": "Oregon Health and Sciences University powered by CCC.",
+    "footerCaptionHref": "http://www.ohsu.edu/",
+    "footerLogoImgSrc": "/styles/images/ccc-logo.png",
+    "footerLogoImgHref": "http://www.ohsu.edu/",
+    "headerCaption": "",
+    "headerLogoImgSrc": "/styles/images/ohsu-header.png"
+};

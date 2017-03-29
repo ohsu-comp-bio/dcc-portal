@@ -35,6 +35,7 @@ import static org.icgc.dcc.portal.server.model.File.parse;
 import static org.icgc.dcc.portal.server.repository.FileRepository.CustomAggregationKeys.REPO_DONOR_COUNT;
 import static org.icgc.dcc.portal.server.repository.FileRepository.CustomAggregationKeys.REPO_SIZE;
 import static org.icgc.dcc.portal.server.util.Collections.isEmpty;
+import static org.icgc.dcc.portal.server.util.ElasticsearchResponseUtils.createResponseMap;
 import static org.icgc.dcc.portal.server.util.SearchResponses.hasHits;
 import static org.supercsv.prefs.CsvPreference.TAB_PREFERENCE;
 
@@ -64,14 +65,16 @@ import org.elasticsearch.search.aggregations.bucket.nested.InternalNested;
 import org.elasticsearch.search.aggregations.bucket.terms.StringTerms;
 import org.elasticsearch.search.aggregations.bucket.terms.Terms;
 import org.elasticsearch.search.aggregations.metrics.sum.InternalSum;
+import org.icgc.dcc.common.core.util.stream.Collectors;
+import org.icgc.dcc.portal.server.model.EntityType;
 import org.icgc.dcc.portal.server.model.File;
 import org.icgc.dcc.portal.server.model.Files;
 import org.icgc.dcc.portal.server.model.Keyword;
 import org.icgc.dcc.portal.server.model.Keywords;
-import org.icgc.dcc.portal.server.model.UniqueSummaryQuery;
 import org.icgc.dcc.portal.server.model.Pagination;
 import org.icgc.dcc.portal.server.model.Query;
 import org.icgc.dcc.portal.server.model.TermFacet;
+import org.icgc.dcc.portal.server.model.UniqueSummaryQuery;
 import org.icgc.dcc.portal.server.pql.convert.AggregationToFacetConverter;
 import org.icgc.dcc.portal.server.repository.FileRepository;
 import org.icgc.dcc.portal.server.repository.FileRepository.CustomAggregationKeys;
@@ -80,7 +83,6 @@ import org.springframework.stereotype.Service;
 import org.supercsv.io.CsvMapWriter;
 
 import com.google.common.base.Joiner;
-import com.google.common.collect.FluentIterable;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
@@ -160,7 +162,7 @@ public class FileService {
   public Files findAll(@NonNull Query query) {
     val response = fileRepository.findAll(query);
     val hits = response.getHits();
-    val files = new Files(convertHitsToRepoFiles(hits));
+    val files = new Files(convertHitsToRepoFiles(hits, query));
 
     val termFacets = AggregationToFacetConverter.getInstance().convert(response.getAggregations());
     val donorCount = fileRepository.searchGroupByRepoNameDonorId(termFacets, query);
@@ -270,27 +272,23 @@ public class FileService {
   }
 
   @SneakyThrows
-  private void exportFiles(OutputStream output, SearchResponse prepResponse, String[] keys) {
+  private void exportFiles(OutputStream output, SearchResponse response, String[] keys) {
     @Cleanup
     val writer = new CsvMapWriter(new BufferedWriter(new OutputStreamWriter(output, UTF_8)), TAB_PREFERENCE);
     writer.writeHeader(toArray(DATA_TABLE_EXPORT_MAP.values(), String.class));
 
-    String scrollId = prepResponse.getScrollId();
-
+    String scrollId = response.getScrollId();
     while (true) {
-      val response = fileRepository.prepareSearchScroll(scrollId);
-
       if (!hasHits(response)) {
         break;
       }
-
       for (val hit : response.getHits()) {
         writer.write(toRowValueMap(hit), keys);
       }
 
       scrollId = response.getScrollId();
+      response = fileRepository.prepareSearchScroll(scrollId);
     }
-
   }
 
   private static String combineUniqueItemsToString(SearchHitField hitField, Function<Set<Object>, String> combiner) {
@@ -362,10 +360,12 @@ public class FileService {
     return result;
   }
 
-  private static List<File> convertHitsToRepoFiles(SearchHits hits) {
-    return FluentIterable.from(hits)
-        .transform(hit -> parse(hit.getSourceAsString()))
-        .toList();
+  private static List<File> convertHitsToRepoFiles(SearchHits hits, Query query) {
+
+    return Stream.of(hits.getHits())
+        .map(hit -> createResponseMap(hit, query, EntityType.FILE))
+        .map(File::parse)
+        .collect(Collectors.toImmutableList());
   }
 
 }
