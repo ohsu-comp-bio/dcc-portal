@@ -227,7 +227,7 @@
             break;
         }
 
-        if ($scope.params.provider === 'ohsu') {
+        if ($scope.params.provider === 'ohsu' || 'bd2k') {
           shouldRefresh = true;
         }
 
@@ -366,6 +366,24 @@
                 $scope.closeLoginPopup();
             }, function(response) {
                 console.log('handle ohsulogin error', response);
+                $window.localStorage.removeItem('ohsutoken');
+                $scope.connecting = false;
+                $scope.params.error = response.data + '(' + response.status + ')';
+            });
+        } else if ( ['bd2k'].indexOf($scope.params.provider) >= 0) {
+          console.log('call bd2k login...');
+          OHSU.login($scope.params.osDomain, $scope.params.osUsername, $scope.params.osPassword)
+            .then(function(response) {
+                console.log('handle bd2klogin ok', response);
+                $window.localStorage.setItem('ohsutoken',response.id_token);
+                Auth.login({token: response.id_token,
+                            username: $scope.params.osUsername});
+                $scope.connecting = false;
+                $scope.params.error = undefined;
+                setup();
+                $scope.closeLoginPopup();
+            }, function(response) {
+                console.log('handle bd2klogin error', response);
                 $window.localStorage.removeItem('ohsutoken');
                 $scope.connecting = false;
                 $scope.params.error = response.data + '(' + response.status + ')';
